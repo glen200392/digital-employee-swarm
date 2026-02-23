@@ -1,6 +1,6 @@
 """
 Agent 基底類別
-所有 Domain Agent 的共同抽象介面。
+所有 Domain Agent 的共同抽象介面，整合 LLM + Skill + EPCC。
 """
 
 import time
@@ -9,24 +9,51 @@ from typing import Any, Dict, List, Optional
 
 from harness.git_memory import GitMemory
 from harness.core import EnterpriseHarness, SessionResult
+from harness.llm_provider import LLMProvider
+from harness.skill_registry import SkillRegistry
 
 
 class BaseAgent(ABC):
     """
     所有 Domain Agent 的抽象基底類別。
-    統一 Agent 介面，支援 EPCC 工作流。
+    統一 Agent 介面，支援 LLM 呼叫 + Skill 技能 + EPCC 工作流。
     """
 
+    # 共享的 LLM Provider 和 Skill Registry（全系統單例）
+    _shared_llm: Optional[LLMProvider] = None
+    _shared_skills: Optional[SkillRegistry] = None
+
     def __init__(self, name: str, role: str, description: str,
+                 system_prompt: str = "",
                  trigger_keywords: Optional[List[str]] = None):
         self.name = name
         self.role = role
         self.description = description
+        self.system_prompt = system_prompt
         self.trigger_keywords = trigger_keywords or []
         self.status = "IDLE"
         self.harness = EnterpriseHarness()
         self.memory = self.harness.memory
         self._task_count = 0
+
+    @classmethod
+    def init_shared_resources(cls, llm: Optional[LLMProvider] = None,
+                              skills: Optional[SkillRegistry] = None):
+        """初始化共享資源（由 Orchestrator 在啟動時呼叫一次）"""
+        cls._shared_llm = llm or LLMProvider()
+        cls._shared_skills = skills or SkillRegistry()
+
+    @property
+    def llm(self) -> LLMProvider:
+        if self._shared_llm is None:
+            BaseAgent._shared_llm = LLMProvider()
+        return self._shared_llm
+
+    @property
+    def skills(self) -> SkillRegistry:
+        if self._shared_skills is None:
+            BaseAgent._shared_skills = SkillRegistry()
+        return self._shared_skills
 
     def run(self, user_instruction: str) -> str:
         """
@@ -37,6 +64,8 @@ class BaseAgent(ABC):
         self._task_count += 1
         print(f"\n{'='*50}")
         print(f"  [{self.name}] {self.role} 啟動")
+        llm_mode = f"LLM: {self.llm.provider_name}" if self.llm.is_llm_available else "離線模式"
+        print(f"  [{self.name}] {llm_mode}")
         print(f"{'='*50}")
 
         result = self.harness.run_epcc_cycle(
@@ -49,12 +78,16 @@ class BaseAgent(ABC):
         print(f"  [{self.name}] 執行結果: {result}")
         return result.output
 
+    def call_llm(self, prompt: str, fallback: str = "") -> str:
+        """
+        呼叫 LLM。若無可用 LLM 或呼叫失敗，使用 fallback 值。
+        """
+        response = self.llm.chat(prompt, system_prompt=self.system_prompt)
+        return response if response else fallback
+
     @abstractmethod
     def _execute(self, task: str, context: Dict[str, Any]) -> str:
-        """
-        子類別必須實作的核心執行邏輯。
-        接收任務描述和上下文，回傳執行結果字串。
-        """
+        """子類別必須實作的核心執行邏輯。"""
         pass
 
     def get_status(self) -> Dict[str, Any]:
@@ -65,14 +98,13 @@ class BaseAgent(ABC):
             "status": self.status,
             "tasks_completed": self._task_count,
             "description": self.description,
+            "llm_provider": self.llm.provider_name,
         }
 
     def get_capabilities(self) -> List[str]:
-        """取得 Agent 能力清單"""
         return self.trigger_keywords
 
     def matches_intent(self, prompt: str) -> bool:
-        """檢查使用者輸入是否匹配此 Agent 的觸發關鍵字"""
         prompt_lower = prompt.lower()
         return any(kw in prompt_lower for kw in self.trigger_keywords)
 

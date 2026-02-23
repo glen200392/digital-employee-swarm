@@ -1,7 +1,6 @@
 """
 Master Orchestrator（中央指揮官）
-對應架構 Layer 1：指揮層 Orchestration。
-接收 DTO 意圖指令 → 意圖分析 → 風險評估 → 派發給 Domain Agent。
+整合 LLM + A2A + MCP + Skill 的完整指揮系統。
 """
 
 from typing import Dict, List, Optional
@@ -13,21 +12,32 @@ from agents.decision_agent import DecisionAgent
 from agents.base_agent import BaseAgent
 from orchestrator.intent_classifier import IntentClassifier
 from harness.risk_assessor import RiskAssessor
+from harness.llm_provider import LLMProvider
+from harness.skill_registry import SkillRegistry
+from protocols.a2a import A2AProtocol, AgentCard
+from protocols.mcp import MCPConnector
 
 
 class MasterOrchestrator:
     """
-    中央指揮官：根據 AGENTS.md 的定義進行任務路由。
-
-    決策流程：
-    1. 接收使用者自然語言指令
-    2. IntentClassifier 解析意圖
-    3. RiskAssessor 評估風險
-    4. 派發給對應的 Domain Agent
-    5. 監控執行並彙整回報
+    中央指揮官：整合所有子系統。
+    
+    啟動流程：
+    1. 初始化 LLM Provider + Skill Registry（共享資源）
+    2. 初始化 4 個 Domain Agent
+    3. 註冊所有 Agent 到 A2A 網路
+    4. 初始化 MCP 連接器
+    5. 等待使用者指令
     """
 
     def __init__(self):
+        # 共享資源
+        self.llm = LLMProvider()
+        self.skill_registry = SkillRegistry()
+
+        # 初始化共享資源到 BaseAgent
+        BaseAgent.init_shared_resources(self.llm, self.skill_registry)
+
         # 初始化所有 Domain Agent
         self.agents: Dict[str, BaseAgent] = {
             "KM_AGENT": KMAgent(),
@@ -38,12 +48,28 @@ class MasterOrchestrator:
 
         self.classifier = IntentClassifier()
         self.risk_assessor = RiskAssessor()
+
+        # A2A 協議 — 自動註冊所有 Agent
+        self.a2a = A2AProtocol()
+        self._register_agents_to_a2a()
+
+        # MCP 連接器
+        self.mcp = MCPConnector()
+
         self.dispatch_log: List[Dict] = []
 
+    def _register_agents_to_a2a(self):
+        """將所有 Agent 註冊到 A2A 網路"""
+        for name, agent in self.agents.items():
+            card = AgentCard(
+                name=name,
+                capabilities=agent.trigger_keywords,
+                executor=agent.run,  # 真實綁定 Agent.run()
+            )
+            self.a2a.register_agent(card)
+
     def dispatch(self, user_prompt: str) -> str:
-        """
-        接收使用者指令，分析意圖，派發給對應 Agent。
-        """
+        """接收使用者指令，分析意圖，派發給對應 Agent。"""
         print(f"\n[Orchestrator] 收到指令: {user_prompt}")
 
         # 1. 意圖分析
@@ -58,9 +84,9 @@ class MasterOrchestrator:
         approval_role = self.risk_assessor.get_approval_role(risk)
         print(f"[Orchestrator] 風險等級: {risk.value} → {approval_role}")
 
-        # 3. 檢查 Agent 是否可用
+        # 3. Agent 可用性
         if agent_name not in self.agents:
-            return f"Agent [{agent_name}] 目前尚未就緒或正在開發中。"
+            return f"Agent [{agent_name}] 尚未就緒。"
 
         # 4. 派發任務
         agent = self.agents[agent_name]
@@ -78,7 +104,6 @@ class MasterOrchestrator:
         return result
 
     def _handle_unknown(self, prompt: str) -> str:
-        """處理無法識別意圖的情況"""
         keywords_hint = self.classifier.suggest_keywords()
         return (
             "抱歉，我不確定該找哪位數位員工處理此需求。\n"
@@ -92,28 +117,31 @@ class MasterOrchestrator:
         )
 
     def get_status(self) -> str:
-        """取得所有 Agent 的狀態摘要"""
+        """取得所有 Agent + 子系統的狀態"""
+        llm_status = self.llm.get_status()
+        llm_icon = "🟢" if llm_status["is_llm"] else "🟡"
+        llm_label = llm_status["active"] if llm_status["is_llm"] else "離線模式"
+
         lines = [
-            "╔══════════════════════════════════════════╗",
-            "║        Agent Fleet Status Dashboard       ║",
-            "╠══════════════════════════════════════════╣",
+            "╔══════════════════════════════════════════════════╗",
+            "║           Agent Fleet Status Dashboard           ║",
+            "╠══════════════════════════════════════════════════╣",
+            f"║  {llm_icon} LLM Provider: {llm_label:<30}  ║",
+            "╠══════════════════════════════════════════════════╣",
         ]
         for name, agent in self.agents.items():
             status = agent.get_status()
             icon = "🟢" if status["status"] == "IDLE" else "🔵"
             lines.append(
-                f"║ {icon} {name:<18} │ "
-                f"{status['role']:<12} │ "
-                f"Tasks: {status['tasks_completed']:<3} ║"
+                f"║  {icon} {name:<18} │ {status['role']:<10} │ "
+                f"Tasks: {status['tasks_completed']:<3}  ║"
             )
-        lines.append("╚══════════════════════════════════════════╝")
+        lines.append("╚══════════════════════════════════════════════════╝")
         return "\n".join(lines)
 
     def get_dispatch_history(self) -> str:
-        """取得任務分派歷史"""
         if not self.dispatch_log:
             return "尚無分派記錄。"
-
         lines = ["=== Dispatch History ==="]
         for i, entry in enumerate(self.dispatch_log[-10:], 1):
             lines.append(
