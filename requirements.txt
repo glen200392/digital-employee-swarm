@@ -1,0 +1,26 @@
+# Digital Employee Swarm System Dependencies
+# Python 3.9+
+
+# 目前 MVP 版本無外部依賴（純 Python 標準庫）
+# 以下為未來接入 LLM API 時需要的套件（取消註解即可）
+
+# === Anthropic (Claude) ===
+# anthropic>=0.30.0
+
+# === OpenAI (GPT-4, Codex) ===
+# openai>=1.30.0
+
+# === Google (Gemini, Vertex AI) ===
+# google-generativeai>=0.5.0
+# google-cloud-aiplatform>=1.60.0
+
+# === Agent Frameworks ===
+# langchain>=0.2.0
+# langgraph>=0.0.50
+# crewai>=0.30.0
+
+# === Vector Database ===
+# qdrant-client>=1.9.0
+
+# === Testing ===
+pytest>=8.0.0
