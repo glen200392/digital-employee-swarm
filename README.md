@@ -1,99 +1,114 @@
-# Digital Employee Swarm System
+# 🤖 Digital Employee Swarm
 
-> **數位員工管理團隊 × AI Agent Fleet 完整人機協作架構**
+> Anthropic Harness + Google A2A/MCP + OpenAI Swarm — Enterprise AI Agent Fleet
 
-整合 **Anthropic Harness + Google A2A/MCP + OpenAI Swarm** 三大技術陣營的企業級 Agent 系統。
-
-📄 **完整架構文件**：[docs/ARCHITECTURE.md](docs/ARCHITECTURE.md)（含三大陣營對比、四層架構圖、六大場景、人類角色矩陣、評估框架）
-
-## 架構概覽
+## 架構總覽
 
 ```
-LAYER 0：治理層（Governance）    → Harness Architect 設計護欄規則
-LAYER 1：指揮層（Orchestration） → Master Orchestrator 任務分派
-LAYER 2：域層  （Domain Agents） → KM / Process / Talent / Decision Agent
-LAYER 3：資料層（Data & Memory） → Git Memory / MCP / A2A Protocol
+┌─────────────────────────────────────────────┐
+│              Web Dashboard (FastAPI)         │
+│        REST API + WebSocket + RBAC          │
+├─────────────────────────────────────────────┤
+│           Master Orchestrator               │
+│    LLM-based NLU + Risk + A2A Dispatch      │
+├──────────┬──────────┬──────────┬────────────┤
+│ KM Agent │ Process  │ Talent   │ Decision   │
+│ 知識萃取  │ 流程優化  │ 人才發展  │ 決策支援    │
+├──────────┴──────────┴──────────┴────────────┤
+│ Harness: LLM Provider + Skill + VectorStore │
+│ Claude / GPT-4o / Gemini + Offline Fallback │
+├─────────────────┬───────────────────────────┤
+│   MCP Protocol  │    A2A Protocol           │
+│ 外部資源標準介面   │  跨 Agent 真實委派         │
+└─────────────────┴───────────────────────────┘
 ```
-
-## Agent Fleet
-
-| Agent | 角色 | 場景 |
-|-------|------|------|
-| **KM Agent** | 知識萃取專家 | 40年隱性知識 → 結構化知識卡片 |
-| **Process Agent** | 流程優化顧問 | 流程瓶頸分析 → 優化方案 |
-| **Talent Agent** | 人才發展顧問 | 能力差距分析 → 學習路徑 |
-| **Decision Agent** | 決策支援分析師 | 數據分析 → 風險矩陣 |
 
 ## 快速開始
 
+### CLI 模式
 ```bash
-# 1. 進入專案目錄
-cd digital_employee_swarm
+git clone https://github.com/glen200392/digital-employee-swarm.git
+cd digital-employee-swarm
+python3 -m venv .venv && source .venv/bin/activate
+pip install -r requirements.txt
 
-# 2. 執行系統
+# 設定 API Key（選填，無 Key 使用離線模板模式）
+export ANTHROPIC_API_KEY=your-key
+
 python main.py
+```
 
-# 3. 輸入指令
-DTO 指令 > 請幫我萃取採購SOP
-DTO 指令 > 優化出貨流程
-DTO 指令 > 評估新人能力
-DTO 指令 > 分析風險
+### Web Dashboard 模式
+```bash
+uvicorn web.app:app --host 0.0.0.0 --port 8000
+# 打開 http://localhost:8000
+# 預設帳號: admin / admin123
+```
+
+### Docker 模式
+```bash
+docker compose up -d
+# 打開 http://localhost:8000
 ```
 
 ## 系統指令
 
 | 指令 | 說明 |
 |------|------|
-| `status` | 顯示所有 Agent 狀態 |
-| `health` | 顯示健康度儀表板 |
-| `agents` | 顯示 Agent 能力清單 |
-| `history` | 顯示任務分派歷史 |
-| `help` | 顯示指令說明 |
-| `exit` | 結束系統 |
+| `status` | Agent Fleet 狀態 |
+| `health` | 健康度儀表板 |
+| `agents` | Agent 能力清單 |
+| `history` | 任務分派歷史 |
+| `llm` | LLM Provider 狀態 |
+| `mcp` | MCP 資源報告 |
+| `a2a` | A2A 協議報告 |
+| `skills` | 可用技能清單 |
 
-## 測試
+## 技術堆疊
 
-```bash
-python -m pytest tests/ -v
-```
+| 技術 | 實作 |
+|------|------|
+| **LLM** | Claude / GPT-4o / Gemini 統一介面 + 離線 fallback |
+| **意圖分類** | LLM-based NLU + 關鍵字 fallback |
+| **向量資料庫** | Qdrant in-memory（無需另外部署） |
+| **MCP** | 真實檔案系統讀寫（知識庫/報告庫） |
+| **A2A** | 跨 Agent 真實委派（delegate → run()） |
+| **Skill** | 5 個內建技能 + 動態註冊 |
+| **Web** | FastAPI + WebSocket + 暗黑風 UI |
+| **RBAC** | JWT 認證 × 3 角色（admin/monitor/viewer） |
+| **部署** | Dockerfile + docker-compose |
+
+## RBAC 角色
+
+| 角色 | 權限 |
+|------|------|
+| `admin` | 全部功能 |
+| `monitor` | 除使用者管理外的全部功能 |
+| `viewer` | 僅查看狀態/歷史 |
 
 ## 目錄結構
 
 ```
 digital_employee_swarm/
-├── main.py                      # 系統入口
-├── AGENTS.md                    # Agent Fleet 註冊表
-├── config/
-│   └── settings.py              # 環境設定
-├── harness/                     # Harness 層（Anthropic 模式）
-│   ├── core.py                  # EnterpriseHarness 雙層設計
-│   ├── git_memory.py            # Git-based 記憶
-│   ├── eval_engine.py           # 品質評估引擎
-│   └── risk_assessor.py         # 風險分級評估
-├── agents/                      # Domain Agent 層
-│   ├── base_agent.py            # Agent 抽象基底
-│   ├── km_agent.py              # 知識萃取 Agent
-│   ├── process_agent.py         # 流程優化 Agent
-│   ├── talent_agent.py          # 人才發展 Agent
-│   └── decision_agent.py        # 決策支援 Agent
-├── orchestrator/                # 指揮層
-│   ├── router.py                # Master Orchestrator
-│   └── intent_classifier.py     # 意圖分類器
-├── protocols/                   # 通訊協議層
-│   ├── a2a.py                   # Agent-to-Agent Protocol
-│   └── mcp.py                   # Model Context Protocol
-├── dashboard/
-│   └── health_monitor.py        # Agent 健康度儀表板
-├── docs/                        # 知識庫存放區
-│   ├── sops/                    # 知識卡片
-│   └── reports/                 # 分析報告
-└── tests/                       # 測試
+├── agents/           4 個 Domain Agent
+├── orchestrator/     Master Orchestrator + Intent Classifier
+├── harness/          LLM + Skill + VectorStore + Eval + Risk
+├── protocols/        MCP + A2A
+├── dashboard/        Health Monitor
+├── web/              FastAPI + RBAC + 前端 UI
+│   ├── app.py
+│   ├── auth.py
+│   └── static/       HTML + CSS + JS
+├── tests/            136 個測試
+├── docs/             架構文件 + 知識庫 + 報告庫
+├── Dockerfile
+├── docker-compose.yml
+└── main.py           CLI 入口
 ```
 
-## 核心設計原則
+## 測試
 
-1. **人類定義邊界，Agent 在邊界內自主執行**
-2. **每個 Agent Session 結束必須留下記憶（Git Commit）**
-3. **風險分級決定人機介入比例**（LOW → 自主 / MED → 監控 / HIGH → 確認）
-4. **持續迭代靠評估框架驅動**
-5. **KM Agent 是所有其他 Agent 的基礎設施**
+```bash
+python3 -m pytest tests/ -v
+# 136 passed in 2.31s
+```
