@@ -3,5 +3,13 @@ anthropic>=0.34.0
 openai>=1.40.0
 google-generativeai>=0.8.0
 
+# Vector Database (in-memory 模式，無需 Qdrant Server)
+qdrant-client>=1.10.0
+
+# Web Dashboard
+fastapi>=0.115.0
+uvicorn>=0.30.0
+
 # Testing
 pytest>=8.0.0
+httpx>=0.27.0

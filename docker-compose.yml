@@ -1,0 +1,23 @@
+version: '3.8'
+
+services:
+  swarm:
+    build: .
+    container_name: digital-employee-swarm
+    ports:
+      - "8000:8000"
+    environment:
+      # 設定至少一個 API Key 啟用 LLM 模式
+      - ANTHROPIC_API_KEY=${ANTHROPIC_API_KEY:-}
+      - OPENAI_API_KEY=${OPENAI_API_KEY:-}
+      - GOOGLE_API_KEY=${GOOGLE_API_KEY:-}
+      - JWT_SECRET=${JWT_SECRET:-digital-employee-swarm-secret}
+    volumes:
+      # 持久化知識庫與報告
+      - ./docs:/app/docs
+    restart: unless-stopped
+    healthcheck:
+      test: [ "CMD", "curl", "-f", "http://localhost:8000/api/status?token=health" ]
+      interval: 30s
+      timeout: 10s
+      retries: 3

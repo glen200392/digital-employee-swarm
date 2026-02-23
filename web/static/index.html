@@ -1,0 +1,167 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Digital Employee Swarm</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="/static/style.css">
+</head>
+<body>
+    <!-- Login Screen -->
+    <div id="login-screen" class="login-screen">
+        <div class="login-card">
+            <div class="login-logo">🤖</div>
+            <h1>Digital Employee Swarm</h1>
+            <p class="login-subtitle">Enterprise AI Agent Fleet</p>
+            <form id="login-form">
+                <input type="text" id="username" placeholder="Username" value="admin" autocomplete="username">
+                <input type="password" id="password" placeholder="Password" value="admin123" autocomplete="current-password">
+                <button type="submit" class="btn-primary">登入系統</button>
+            </form>
+            <p class="login-hint">預設帳號: admin / admin123</p>
+        </div>
+    </div>
+
+    <!-- Main Dashboard -->
+    <div id="dashboard" class="dashboard hidden">
+        <!-- Sidebar -->
+        <nav class="sidebar">
+            <div class="sidebar-header">
+                <span class="logo-icon">🤖</span>
+                <span class="logo-text">DTO Swarm</span>
+            </div>
+            <ul class="nav-list">
+                <li class="nav-item active" data-view="overview">
+                    <span class="nav-icon">📊</span>
+                    <span>總覽</span>
+                </li>
+                <li class="nav-item" data-view="chat">
+                    <span class="nav-icon">💬</span>
+                    <span>Agent 對話</span>
+                </li>
+                <li class="nav-item" data-view="agents">
+                    <span class="nav-icon">🤖</span>
+                    <span>Agent Fleet</span>
+                </li>
+                <li class="nav-item" data-view="history">
+                    <span class="nav-icon">📜</span>
+                    <span>任務歷史</span>
+                </li>
+                <li class="nav-item" data-view="system">
+                    <span class="nav-icon">⚙️</span>
+                    <span>系統監控</span>
+                </li>
+            </ul>
+            <div class="sidebar-footer">
+                <div class="user-info">
+                    <span id="user-display">—</span>
+                    <span id="user-role" class="role-badge">—</span>
+                </div>
+                <button id="logout-btn" class="btn-logout">登出</button>
+            </div>
+        </nav>
+
+        <!-- Main Content -->
+        <main class="main-content">
+            <!-- Header -->
+            <header class="top-header">
+                <h2 id="page-title">系統總覽</h2>
+                <div class="header-badges">
+                    <span id="llm-badge" class="badge">—</span>
+                    <span id="intent-badge" class="badge badge-info">—</span>
+                </div>
+            </header>
+
+            <!-- Views -->
+            <div id="view-overview" class="view active">
+                <div class="stats-grid">
+                    <div class="stat-card">
+                        <div class="stat-value" id="stat-agents">0</div>
+                        <div class="stat-label">Active Agents</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-value" id="stat-tasks">0</div>
+                        <div class="stat-label">Tasks Completed</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-value" id="stat-mcp">0/0</div>
+                        <div class="stat-label">MCP 連線</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-value" id="stat-skills">0</div>
+                        <div class="stat-label">Skills</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-value" id="stat-vectors">0</div>
+                        <div class="stat-label">知識索引</div>
+                    </div>
+                </div>
+                <div class="panels-grid">
+                    <div class="panel">
+                        <h3>Agent Fleet Status</h3>
+                        <div id="agent-status-list" class="agent-list"></div>
+                    </div>
+                    <div class="panel">
+                        <h3>最近任務</h3>
+                        <div id="recent-tasks" class="task-list">
+                            <p class="empty-msg">尚無任務記錄</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div id="view-chat" class="view">
+                <div class="chat-container">
+                    <div id="chat-messages" class="chat-messages">
+                        <div class="chat-welcome">
+                            <h3>👋 歡迎使用 Agent 對話</h3>
+                            <p>輸入指令讓 Agent Fleet 為你工作</p>
+                            <div class="quick-prompts">
+                                <button class="quick-btn" data-prompt="請幫我萃取採購SOP">📝 萃取 SOP</button>
+                                <button class="quick-btn" data-prompt="優化出貨流程">⚡ 優化流程</button>
+                                <button class="quick-btn" data-prompt="評估新人能力">👥 評估人才</button>
+                                <button class="quick-btn" data-prompt="分析投資風險">📊 分析風險</button>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="chat-input-area">
+                        <input type="text" id="chat-input" placeholder="輸入 DTO 指令..." autocomplete="off">
+                        <button id="chat-send" class="btn-send">發送</button>
+                    </div>
+                </div>
+            </div>
+
+            <div id="view-agents" class="view">
+                <div id="agents-grid" class="agents-grid"></div>
+            </div>
+
+            <div id="view-history" class="view">
+                <div id="history-table" class="history-container">
+                    <p class="empty-msg">尚無任務記錄</p>
+                </div>
+            </div>
+
+            <div id="view-system" class="view">
+                <div class="system-panels">
+                    <div class="panel">
+                        <h3>🔗 MCP Resources</h3>
+                        <div id="mcp-list"></div>
+                    </div>
+                    <div class="panel">
+                        <h3>🛠️ Skills</h3>
+                        <div id="skills-list"></div>
+                    </div>
+                    <div class="panel">
+                        <h3>🔍 向量資料庫</h3>
+                        <div id="vector-info"></div>
+                    </div>
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <script src="/static/app.js"></script>
+</body>
+</html>
