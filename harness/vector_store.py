@@ -123,20 +123,39 @@ class VectorStore:
                 embedding = self._embedding_fn(query)
                 if hasattr(embedding, 'tolist'):
                     embedding = embedding.tolist()
-                results = self._client.search(
-                    collection_name=self.collection_name,
-                    query_vector=embedding,
-                    limit=top_k,
-                )
-                return [
-                    {
-                        "doc_id": r.payload.get("doc_id", ""),
-                        "title": r.payload.get("title", ""),
-                        "content": r.payload.get("content", ""),
-                        "score": r.score,
-                    }
-                    for r in results
-                ]
+                # Qdrant v1.10+ 使用 query_points
+                try:
+                    from qdrant_client.models import QueryRequest
+                    result = self._client.query_points(
+                        collection_name=self.collection_name,
+                        query=embedding,
+                        limit=top_k,
+                    )
+                    return [
+                        {
+                            "doc_id": p.payload.get("doc_id", ""),
+                            "title": p.payload.get("title", ""),
+                            "content": p.payload.get("content", ""),
+                            "score": p.score,
+                        }
+                        for p in result.points
+                    ]
+                except (ImportError, AttributeError, TypeError):
+                    # Fallback to legacy search API
+                    results = self._client.search(
+                        collection_name=self.collection_name,
+                        query_vector=embedding,
+                        limit=top_k,
+                    )
+                    return [
+                        {
+                            "doc_id": r.payload.get("doc_id", ""),
+                            "title": r.payload.get("title", ""),
+                            "content": r.payload.get("content", ""),
+                            "score": r.score,
+                        }
+                        for r in results
+                    ]
             except Exception as e:
                 print(f"  [VectorStore] Qdrant 搜尋失敗: {e}")
 
