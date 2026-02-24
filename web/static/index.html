@@ -53,6 +53,10 @@
                     <span class="nav-icon">⚙️</span>
                     <span>系統監控</span>
                 </li>
+                <li class="nav-item" data-view="approvals">
+                    <span class="nav-icon">🔐</span>
+                    <span>審批管理</span>
+                </li>
             </ul>
             <div class="sidebar-footer">
                 <div class="user-info">
@@ -156,6 +160,22 @@
                     <div class="panel">
                         <h3>🔍 向量資料庫</h3>
                         <div id="vector-info"></div>
+                    </div>
+                </div>
+            </div>
+
+            <div id="view-approvals" class="view">
+                <div class="system-panels">
+                    <div class="panel" style="grid-column:1/-1">
+                        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:1rem">
+                            <h3>⏳ 待審批任務</h3>
+                            <button id="approvals-refresh" class="btn-primary" style="padding:0.4rem 1rem;font-size:0.85rem">🔄 刷新</button>
+                        </div>
+                        <div id="approvals-pending-list"><p class="empty-msg">暫無待審批任務</p></div>
+                    </div>
+                    <div class="panel" style="grid-column:1/-1">
+                        <h3>📋 已處理記錄</h3>
+                        <div id="approvals-history-list"><p class="empty-msg">暫無記錄</p></div>
                     </div>
                 </div>
             </div>

@@ -9,6 +9,7 @@ from typing import Any, Dict, Optional
 from harness.git_memory import GitMemory
 from harness.eval_engine import EvalEngine
 from harness.risk_assessor import RiskAssessor, RiskLevel
+from harness.hitl_manager import HITLManager, ApprovalStatus
 
 
 class SessionResult:
@@ -50,6 +51,7 @@ class EnterpriseHarness:
         self.memory = GitMemory(repo_path)
         self.eval_engine = EvalEngine()
         self.risk_assessor = RiskAssessor()
+        self.hitl = HITLManager()
 
     def restore_context(self, agent_name: str) -> Dict[str, Any]:
         """
@@ -102,6 +104,39 @@ class EnterpriseHarness:
         # P: Plan — 風險評估
         risk = self.assess_risk(task, agent_name)
         print(f"  [Harness] Plan: 風險等級 = {risk.value}")
+
+        if risk in (RiskLevel.HIGH, RiskLevel.MED):
+            risk_reason = self.risk_assessor.assessment_log[-1].get("reason", "") if self.risk_assessor.assessment_log else ""
+            approval = self.hitl.check_and_gate(
+                task=task,
+                agent_name=agent_name,
+                risk_level=risk.value,
+                risk_reason=risk_reason,
+            )
+            if approval.status == ApprovalStatus.PENDING:
+                print(f"  [Harness] ⏳ 任務已暫停，等待人工審批 (ID: {approval.request_id})")
+                return SessionResult(
+                    agent_name=agent_name,
+                    task_id=f"PENDING-{approval.request_id[:8]}",
+                    success=False,
+                    output=(
+                        f"⏳ 任務已暫停，等待人工審批。\n"
+                        f"審批 ID: {approval.request_id}\n"
+                        f"風險原因: {approval.risk_reason}\n\n"
+                        f"管理員可透過 Web Dashboard 或 API 審批此任務。"
+                    ),
+                    risk_level=risk,
+                )
+            elif approval.status == ApprovalStatus.REJECTED:
+                print(f"  [Harness] ❌ 任務已被拒絕 (ID: {approval.request_id})")
+                return SessionResult(
+                    agent_name=agent_name,
+                    task_id=f"REJECTED-{approval.request_id[:8]}",
+                    success=False,
+                    output=f"❌ 任務已被拒絕。\n審批 ID: {approval.request_id}",
+                    risk_level=risk,
+                )
+            # APPROVED / AUTO_APPROVED → 繼續執行
 
         if risk == RiskLevel.HIGH:
             print(f"  [Harness] ⚠️  高風險任務，需要 Harness Architect 確認")

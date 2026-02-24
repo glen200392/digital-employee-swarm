@@ -56,6 +56,7 @@ $$('.nav-item').forEach(item => {
         if (currentView === 'history') loadHistory();
         if (currentView === 'agents') loadAgents();
         if (currentView === 'system') loadSystem();
+        if (currentView === 'approvals') loadApprovals();
     });
 });
 
@@ -281,6 +282,79 @@ async function loadSystem() {
         `;
     } catch (err) { console.error(err); }
 }
+
+// === Approvals ===
+async function loadApprovals() {
+    try {
+        const res = await fetch(`${API}/api/approvals/pending?token=${token}`);
+        if (!res.ok) return;
+        const data = await res.json();
+        const pendingEl = $('#approvals-pending-list');
+        const requests = data.requests || [];
+        if (!requests.length) {
+            pendingEl.innerHTML = '<p class="empty-msg">暫無待審批任務</p>';
+        } else {
+            pendingEl.innerHTML = requests.map(r => {
+                const shortId = r.request_id.slice(0, 8);
+                const created = new Date(r.created_at + 'Z').toLocaleString('zh-TW');
+                const deadline = new Date(new Date(r.created_at + 'Z').getTime() + r.timeout_hours * 3600 * 1000);
+                const remaining = Math.max(0, Math.floor((deadline - Date.now()) / 60000));
+                return `
+                <div class="history-row" style="flex-direction:column;align-items:flex-start;gap:0.5rem;padding:1rem;border-bottom:1px solid var(--border)">
+                    <div style="display:flex;justify-content:space-between;width:100%;align-items:center">
+                        <span style="font-weight:600">🔴 ${r.risk_level} | ${r.agent}</span>
+                        <span style="font-size:0.75rem;color:var(--text-muted)">ID: ${shortId} | 建立: ${created} | 剩餘: ${remaining}分鐘</span>
+                    </div>
+                    <div style="font-size:0.9rem">${escapeHtml(r.task.slice(0, 200))}</div>
+                    <div style="font-size:0.8rem;color:var(--text-muted)">風險原因: ${escapeHtml(r.risk_reason)}</div>
+                    <div style="display:flex;gap:0.5rem;margin-top:0.25rem">
+                        <button class="btn-primary" style="background:var(--success,#22c55e);padding:0.3rem 0.8rem;font-size:0.8rem"
+                            onclick="resolveApproval('${r.request_id}','approve')">✅ 批准</button>
+                        <button class="btn-primary" style="background:var(--danger,#ef4444);padding:0.3rem 0.8rem;font-size:0.8rem"
+                            onclick="resolveApproval('${r.request_id}','reject')">❌ 拒絕</button>
+                    </div>
+                </div>`;
+            }).join('');
+        }
+
+        // Load history (non-pending)
+        await loadApprovalHistory();
+    } catch (err) { console.error('loadApprovals error:', err); }
+}
+
+async function loadApprovalHistory() {
+    // We show history by listing approved/rejected: use pending endpoint complement
+    // The API doesn't have a "list all" endpoint yet, so we skip if no data
+    $('#approvals-history-list').innerHTML = '<p class="empty-msg">請至 API 查詢完整歷史記錄</p>';
+}
+
+async function resolveApproval(requestId, action) {
+    const note = prompt(`請輸入備註（可選）:`, '') || '';
+    const resolvedBy = prompt(`請輸入您的姓名:`, 'admin') || 'admin';
+    try {
+        const res = await fetch(`${API}/api/approvals/${requestId}/${action}`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ token, resolved_by: resolvedBy, note }),
+        });
+        if (res.ok) {
+            alert(action === 'approve' ? '✅ 已批准' : '❌ 已拒絕');
+            loadApprovals();
+        } else {
+            alert('操作失敗: ' + res.status);
+        }
+    } catch (err) { alert('錯誤: ' + err.message); }
+}
+
+document.addEventListener('DOMContentLoaded', () => {
+    const refreshBtn = document.getElementById('approvals-refresh');
+    if (refreshBtn) refreshBtn.addEventListener('click', loadApprovals);
+});
+
+// Auto-refresh approvals every 30 seconds when on approvals view
+setInterval(() => {
+    if (currentView === 'approvals') loadApprovals();
+}, 30000);
 
 // Auto-refresh
 setInterval(loadDashboard, 30000);
