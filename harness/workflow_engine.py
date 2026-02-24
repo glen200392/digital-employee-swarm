@@ -4,6 +4,7 @@ Workflow Engine — 多 Agent 協作工作流引擎
 每個工作流可以被定義、保存、重複執行。
 """
 
+import ast
 import datetime
 import time
 from concurrent.futures import ThreadPoolExecutor, as_completed
@@ -116,6 +117,37 @@ class WorkflowResult:
             if s.step_id == step_id:
                 return s
         return None
+
+
+# Allowlist of safe AST node types for condition expressions
+_SAFE_AST_NODES = (
+    ast.Expression, ast.BoolOp, ast.UnaryOp, ast.Compare,
+    ast.And, ast.Or, ast.Not,
+    ast.Eq, ast.NotEq, ast.Lt, ast.LtE, ast.Gt, ast.GtE, ast.Is, ast.IsNot,
+    ast.In, ast.NotIn,
+    ast.Constant,  # numbers, strings, booleans
+    ast.Name,      # variable references from context
+    ast.Load,
+)
+
+
+def _safe_eval_condition(condition: str, context: Dict) -> bool:
+    """
+    安全地評估條件表達式。
+    只允許比較運算、布林運算和變數引用，防止代碼注入。
+    """
+    try:
+        tree = ast.parse(condition, mode="eval")
+    except SyntaxError:
+        return False
+
+    # Verify every node is in the allowlist
+    for node in ast.walk(tree):
+        if not isinstance(node, _SAFE_AST_NODES):
+            raise ValueError(f"不允許的表達式節點: {type(node).__name__}")
+
+    # Evaluate with only context variables (no builtins)
+    return bool(eval(compile(tree, "<condition>", "eval"), {"__builtins__": {}}, context))  # noqa: S307
 
 
 class WorkflowEngine:
@@ -299,12 +331,11 @@ class WorkflowEngine:
         )
 
     def _execute_condition_step(self, step: WorkflowStep, context: Dict) -> bool:
-        """評估 condition 表達式，回傳 True/False"""
+        """評估 condition 表達式，回傳 True/False（使用受限 AST 解析器）"""
         if not step.condition:
             return True
         try:
-            result = eval(step.condition, {"__builtins__": {}}, context)  # noqa: S307
-            return bool(result)
+            return _safe_eval_condition(step.condition, context)
         except Exception:
             return False
 
@@ -480,7 +511,7 @@ class WorkflowEngine:
                     agent_name="KM_AGENT",
                     task_template=(
                         "請針對以下任務產出高品質報告：{topic}"
-                        "{feedback}"
+                        "\n{feedback}"
                     ),
                     condition="eval_score >= 0.75",
                     max_iterations=3,

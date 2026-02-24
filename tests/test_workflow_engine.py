@@ -369,9 +369,7 @@ class TestWebWorkflowAPI:
             "/api/workflows/nonexistent/execute",
             json={"token": token, "context": {}},
         )
-        assert res.status_code == 200
-        data = res.json()
-        assert data["success"] is False
+        assert res.status_code == 404
 
     def test_list_workflows_no_auth(self):
         if not self.available:

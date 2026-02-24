@@ -8,7 +8,7 @@
       "step_id": "step1_loop",
       "step_type": "loop",
       "agent_name": "KM_AGENT",
-      "task_template": "請針對以下任務產出高品質報告：{topic}{feedback}",
+      "task_template": "請針對以下任務產出高品質報告：{topic}\n{feedback}",
       "condition": "eval_score >= 0.75",
       "max_iterations": 3,
       "parallel_steps": [],

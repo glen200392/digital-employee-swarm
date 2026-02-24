@@ -253,6 +253,8 @@ async def list_workflows(token: str):
 async def execute_workflow(workflow_id: str, body: WorkflowExecuteRequest):
     """執行指定工作流"""
     verify_auth(body.token, "workflows")
+    if workflow_id not in orchestrator.workflow_engine.workflow_registry:
+        raise HTTPException(status_code=404, detail=f"工作流 [{workflow_id}] 不存在。")
     result = orchestrator.workflow_engine.execute(workflow_id, body.context)
     return {
         "workflow_id": result.workflow_id,
