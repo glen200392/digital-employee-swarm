@@ -1,8 +1,8 @@
-# 知識卡片: SOP
+# 知識卡片: A
 
 ## 基本資訊
 - **建立時間**: 2026-02-24 02:25:43
-- **來源指令**: 萃取SOP
+- **來源指令**: 萃取A
 - **狀態**: 初稿（待知識大使驗證）
 - **Agent**: KM_AGENT
 - **模式**: 離線模板（建議設定 LLM API Key 以取得 AI 深度解析）
@@ -10,7 +10,7 @@
 ## 延續上次進度
 - [2026-02-24 02:25:43] [KM_AGENT] Task-TASK-1771899943: COMPLETED | Score: 0.3 | Risk: LOW | 知識卡片已建立: docs/sops/knowledge_KM-1771899943.md
 - [2026-02-24 02:25:43] [KM_AGENT] Task-TASK-1771899943: COMPLETED | Score: 0.3 | Risk: LOW | 知識卡片已建立: docs/sops/knowledge_KM-1771899943.md
-- [2026-02-24 02:25:43] [KM_AGENT] Task-TASK-1771899943: COMPLETED | Score: 0.5 | Risk: LOW | [模擬] 已處理任務: 請幫我萃取採購SOP
+- [2026-02-24 02:25:43] [KM_AGENT] Task-TASK-1771899943: COMPLETED | Score: 0.3 | Risk: LOW | 知識卡片已建立: docs/sops/knowledge_KM-1771899943.md
 
 ## 核心流程
 1. 步驟一：待 LLM 解析後自動填入
