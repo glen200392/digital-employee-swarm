@@ -8,7 +8,7 @@ from typing import Any, Dict, Optional
 
 from harness.git_memory import GitMemory
 from harness.eval_engine import EvalEngine
-from harness.risk_assessor import RiskAssessor, RiskLevel
+from harness.risk_assessor import SemanticRiskAssessor, RiskLevel
 from harness.hitl_manager import HITLManager, ApprovalStatus
 
 
@@ -50,7 +50,8 @@ class EnterpriseHarness:
     def __init__(self, repo_path: Optional[str] = None):
         self.memory = GitMemory(repo_path)
         self.eval_engine = EvalEngine()
-        self.risk_assessor = RiskAssessor()
+        self._llm = None
+        self.risk_assessor = SemanticRiskAssessor(llm_provider=self._llm)
         self.hitl = HITLManager()
 
     def restore_context(self, agent_name: str) -> Dict[str, Any]:
