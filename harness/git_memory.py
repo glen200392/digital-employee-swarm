@@ -26,7 +26,13 @@ class GitMemory:
                 os.path.dirname(os.path.abspath(__file__))
             )
         self.repo_path = repo_path
-        self.session_store = session_store or SessionStore()
+        if session_store is None:
+            db_path = os.getenv(
+                "SESSION_DB_PATH",
+                os.path.join(repo_path, "data", "sessions.db"),
+            )
+            session_store = SessionStore(db_path=db_path)
+        self.session_store = session_store
         self._ensure_dirs()
 
     def _ensure_dirs(self):
