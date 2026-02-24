@@ -16,3 +16,6 @@ env/
 
 # OS
 .DS_Store
+
+# Database files (runtime artifacts)
+data/*.db
