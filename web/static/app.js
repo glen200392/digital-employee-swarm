@@ -57,7 +57,6 @@ $$('.nav-item').forEach(item => {
         if (currentView === 'agents') loadAgents();
         if (currentView === 'system') loadSystem();
         if (currentView === 'approvals') loadApprovals();
-        if (currentView === 'approvals') loadApprovals();
     });
 });
 
