@@ -12,7 +12,7 @@ from fastapi import FastAPI, HTTPException, Depends, WebSocket, WebSocketDisconn
 from fastapi.staticfiles import StaticFiles
 from fastapi.responses import FileResponse
 from pydantic import BaseModel
-from typing import Optional
+from typing import Optional, Dict, Any
 import json
 
 from orchestrator.router import MasterOrchestrator
@@ -59,6 +59,11 @@ class ResolveRequest(BaseModel):
     token: str
     resolved_by: str = "admin"
     note: str = ""
+
+
+class WorkflowExecuteRequest(BaseModel):
+    token: str
+    context: Dict[str, Any] = {}
 
 
 # === Helper: 驗證 Token ===
@@ -224,6 +229,51 @@ async def get_skills(token: str):
             "tags": s.tags,
         })
     return {"skills": skills}
+
+
+# === Workflow API ===
+
+@app.get("/api/workflows")
+async def list_workflows(token: str):
+    """列出所有已註冊的工作流"""
+    verify_auth(token, "workflows")
+    workflows = []
+    for wf in orchestrator.workflow_engine.workflow_registry.values():
+        workflows.append({
+            "workflow_id": wf.workflow_id,
+            "name": wf.name,
+            "description": wf.description,
+            "created_at": wf.created_at,
+            "step_count": len(wf.steps),
+        })
+    return {"workflows": workflows}
+
+
+@app.post("/api/workflows/{workflow_id}/execute")
+async def execute_workflow(workflow_id: str, body: WorkflowExecuteRequest):
+    """執行指定工作流"""
+    verify_auth(body.token, "workflows")
+    if workflow_id not in orchestrator.workflow_engine.workflow_registry:
+        raise HTTPException(status_code=404, detail=f"工作流 [{workflow_id}] 不存在。")
+    result = orchestrator.workflow_engine.execute(workflow_id, body.context)
+    return {
+        "workflow_id": result.workflow_id,
+        "success": result.success,
+        "final_output": result.final_output,
+        "total_duration_sec": result.total_duration_sec,
+        "steps": [
+            {
+                "step_id": s.step_id,
+                "agent_name": s.agent_name,
+                "success": s.success,
+                "output": s.output,
+                "score": s.score,
+                "duration_sec": s.duration_sec,
+                "error": s.error,
+            }
+            for s in result.steps
+        ],
+    }
 
 
 # === WebSocket ===

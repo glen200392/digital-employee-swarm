@@ -14,6 +14,7 @@ from orchestrator.intent_classifier import IntentClassifier
 from harness.risk_assessor import RiskAssessor
 from harness.llm_provider import LLMProvider
 from harness.skill_registry import SkillRegistry
+from harness.workflow_engine import WorkflowEngine
 from protocols.a2a import A2AProtocol, AgentCard
 from protocols.mcp import MCPConnector
 
@@ -55,6 +56,9 @@ class MasterOrchestrator:
 
         # MCP 連接器
         self.mcp = MCPConnector()
+
+        # 工作流引擎
+        self.workflow_engine = WorkflowEngine(orchestrator=self)
 
         self.dispatch_log: List[Dict] = []
 
@@ -149,3 +153,8 @@ class MasterOrchestrator:
                 f"{entry['prompt'][:40]}..."
             )
         return "\n".join(lines)
+
+    def run_workflow(self, workflow_id: str, context: Dict = None) -> str:
+        """執行預定義的工作流"""
+        result = self.workflow_engine.execute(workflow_id, context)
+        return result.final_output

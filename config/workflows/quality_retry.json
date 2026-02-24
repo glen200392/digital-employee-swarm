@@ -1,0 +1,19 @@
+{
+  "workflow_id": "quality_retry",
+  "name": "品質不達標重試",
+  "description": "執行任務 → 評估品質 → 不達標則重試（最多 3 次）",
+  "created_at": "2024-01-01",
+  "steps": [
+    {
+      "step_id": "step1_loop",
+      "step_type": "loop",
+      "agent_name": "KM_AGENT",
+      "task_template": "請針對以下任務產出高品質報告：{topic}\n{feedback}",
+      "condition": "eval_score >= 0.75",
+      "max_iterations": 3,
+      "parallel_steps": [],
+      "on_success": null,
+      "on_failure": null
+    }
+  ]
+}

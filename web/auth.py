@@ -22,9 +22,10 @@ class Role(Enum):
 # 角色權限
 ROLE_PERMISSIONS = {
     Role.ADMIN: {"dispatch", "status", "health", "agents", "history",
-                 "llm", "mcp", "a2a", "skills", "users", "config", "approvals"},
+                 "llm", "mcp", "a2a", "skills", "users", "config", "approvals",
+                 "workflows"},
     Role.MONITOR: {"dispatch", "status", "health", "agents", "history",
-                   "llm", "mcp", "a2a", "skills", "approvals"},
+                   "llm", "mcp", "a2a", "skills", "approvals", "workflows"},
     Role.VIEWER: {"status", "health", "agents", "history"},
 }
 

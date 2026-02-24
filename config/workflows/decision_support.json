@@ -1,0 +1,64 @@
+{
+  "workflow_id": "decision_support",
+  "name": "決策支援完整分析",
+  "description": "平行分析（流程面 + 人員面）→ 合併 → 綜合決策建議",
+  "created_at": "2024-01-01",
+  "steps": [
+    {
+      "step_id": "step1_parallel",
+      "step_type": "parallel",
+      "agent_name": null,
+      "task_template": "",
+      "condition": null,
+      "max_iterations": 3,
+      "parallel_steps": [
+        {
+          "step_id": "step1a_process",
+          "step_type": "agent",
+          "agent_name": "PROCESS_AGENT",
+          "task_template": "從流程面分析以下決策議題：{topic}",
+          "condition": null,
+          "max_iterations": 3,
+          "parallel_steps": [],
+          "on_success": null,
+          "on_failure": null
+        },
+        {
+          "step_id": "step1b_talent",
+          "step_type": "agent",
+          "agent_name": "TALENT_AGENT",
+          "task_template": "從人員能力面分析以下決策議題：{topic}",
+          "condition": null,
+          "max_iterations": 3,
+          "parallel_steps": [],
+          "on_success": null,
+          "on_failure": null
+        }
+      ],
+      "on_success": null,
+      "on_failure": null
+    },
+    {
+      "step_id": "step2_merge",
+      "step_type": "merge",
+      "agent_name": null,
+      "task_template": "",
+      "condition": null,
+      "max_iterations": 3,
+      "parallel_steps": [],
+      "on_success": null,
+      "on_failure": null
+    },
+    {
+      "step_id": "step3_decision",
+      "step_type": "agent",
+      "agent_name": "DECISION_AGENT",
+      "task_template": "基於以下多面向分析，提供綜合決策建議：\n{step2_merge}",
+      "condition": null,
+      "max_iterations": 3,
+      "parallel_steps": [],
+      "on_success": null,
+      "on_failure": null
+    }
+  ]
+}
