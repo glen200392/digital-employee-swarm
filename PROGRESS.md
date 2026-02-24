@@ -97,3 +97,4 @@
 | 2026-02-24 02:33:34 | KM_AGENT | TASK-1771900414 | COMPLETED | Score: 0.5 | Risk: LOW | [模擬] 已處理任務: 請幫我萃取採購SOP |
 | 2026-02-24 02:33:35 | KM_AGENT | TASK-1771900415 | COMPLETED | Score: 0.4 | Risk: LOW | 知識卡片已建立: docs/sops/knowledge_KM-1771900415.md |
 | 2026-02-24 02:35:17 | KM_AGENT | TASK-1771900517 | COMPLETED | Score: 0.3 | Risk: LOW | 知識卡片已建立: docs/sops/knowledge_KM-1771900517.md |
+| 2026-02-24 02:35:17 | PROCESS_AGENT | TASK-1771900517 | COMPLETED | Score: 0.4 | Risk: LOW | 流程分析報告已建立: docs/reports/process_PROC-1771900517.md |
