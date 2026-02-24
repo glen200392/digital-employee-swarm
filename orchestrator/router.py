@@ -5,6 +5,7 @@ Master Orchestrator（中央指揮官）
 
 from typing import Dict, List, Optional
 
+from harness.task_queue import TaskQueue, TaskPriority
 from agents.km_agent import KMAgent
 from agents.process_agent import ProcessAgent
 from agents.talent_agent import TalentAgent
@@ -58,6 +59,14 @@ class MasterOrchestrator:
 
         self.dispatch_log: List[Dict] = []
 
+        # 非同步任務佇列
+        self.task_queue = TaskQueue(
+            db_path="data/task_queue.db",
+            num_workers=2,
+            agent_executor=self._execute_for_queue,
+        )
+        self.task_queue.start()
+
     def _register_agents_to_a2a(self):
         """將所有 Agent 註冊到 A2A 網路"""
         for name, agent in self.agents.items():
@@ -67,6 +76,24 @@ class MasterOrchestrator:
                 executor=agent.run,  # 真實綁定 Agent.run()
             )
             self.a2a.register_agent(card)
+
+    def submit(
+        self,
+        agent_name: str,
+        instruction: str,
+        priority: TaskPriority = TaskPriority.NORMAL,
+        callback_url: Optional[str] = None,
+    ) -> str:
+        """非同步提交任務，返回 task_id（不等待結果）"""
+        return self.task_queue.enqueue(
+            agent_name, instruction, priority, callback_url
+        )
+
+    def _execute_for_queue(self, agent_name: str, instruction: str) -> str:
+        """供 TaskQueue Worker 呼叫的執行器"""
+        if agent_name not in self.agents:
+            raise ValueError(f"Agent [{agent_name}] 不存在")
+        return self.agents[agent_name].run(instruction)
 
     def dispatch(self, user_prompt: str) -> str:
         """接收使用者指令，分析意圖，派發給對應 Agent。"""

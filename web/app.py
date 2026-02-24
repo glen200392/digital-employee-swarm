@@ -11,21 +11,31 @@ sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 from fastapi import FastAPI, HTTPException, Depends, WebSocket, WebSocketDisconnect
 from fastapi.staticfiles import StaticFiles
 from fastapi.responses import FileResponse
+from contextlib import asynccontextmanager
 from pydantic import BaseModel
 from typing import Optional
 import json
 
 from orchestrator.router import MasterOrchestrator
+from harness.task_queue import TaskPriority
 from harness.vector_store import VectorStore
 from harness.hitl_manager import HITLManager, ApprovalAction
 from web.auth import AuthManager, Role
 
 # === 全域初始化 ===
-app = FastAPI(title="Digital Employee Swarm", version="2.0")
 orchestrator = MasterOrchestrator()
 vector_store = VectorStore()
 auth = AuthManager()
 hitl = HITLManager()
+
+
+@asynccontextmanager
+async def _lifespan(app):
+    yield
+    orchestrator.task_queue.stop(graceful=True)
+
+
+app = FastAPI(title="Digital Employee Swarm", version="2.0", lifespan=_lifespan)
 
 # 索引知識庫
 project_root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
@@ -59,6 +69,14 @@ class ResolveRequest(BaseModel):
     token: str
     resolved_by: str = "admin"
     note: str = ""
+
+
+class QueueSubmitRequest(BaseModel):
+    agent_name: str
+    instruction: str
+    priority: str = "NORMAL"
+    callback_url: Optional[str] = None
+    token: str
 
 
 # === Helper: 驗證 Token ===
@@ -201,6 +219,74 @@ async def expire_approvals(token: str):
     verify_auth(token, "approvals")
     expired = hitl.expire_timeouts()
     return {"expired_count": len(expired), "expired_ids": expired}
+
+
+# === Queue API ===
+
+def _task_to_dict(task):
+    return {
+        "task_id": task.task_id,
+        "agent_name": task.agent_name,
+        "instruction": task.instruction,
+        "priority": task.priority.name,
+        "status": task.status.value,
+        "created_at": task.created_at,
+        "started_at": task.started_at,
+        "completed_at": task.completed_at,
+        "result": task.result,
+        "error": task.error,
+        "retry_count": task.retry_count,
+        "max_retries": task.max_retries,
+        "callback_url": task.callback_url,
+        "metadata": task.metadata,
+    }
+
+
+@app.post("/api/queue/submit")
+async def submit_task(req: QueueSubmitRequest):
+    verify_auth(req.token, "dispatch")
+    try:
+        priority = TaskPriority[req.priority.upper()]
+    except KeyError:
+        raise HTTPException(status_code=400, detail=f"Invalid priority: {req.priority}")
+    task_id = orchestrator.submit(
+        req.agent_name, req.instruction, priority, req.callback_url
+    )
+    return {"task_id": task_id, "status": "pending"}
+
+
+@app.get("/api/queue/tasks/{task_id}")
+async def get_task_status(task_id: str, token: str):
+    verify_auth(token, "status")
+    task = orchestrator.task_queue.get_status(task_id)
+    if task is None:
+        raise HTTPException(status_code=404, detail="Task not found")
+    return _task_to_dict(task)
+
+
+@app.post("/api/queue/tasks/{task_id}/cancel")
+async def cancel_task(task_id: str, token: str):
+    verify_auth(token, "dispatch")
+    cancelled = orchestrator.task_queue.cancel(task_id)
+    if not cancelled:
+        raise HTTPException(
+            status_code=400,
+            detail="Task cannot be cancelled (not found or not in PENDING state)",
+        )
+    return {"task_id": task_id, "status": "cancelled"}
+
+
+@app.get("/api/queue/stats")
+async def get_queue_stats(token: str):
+    verify_auth(token, "status")
+    return orchestrator.task_queue.get_queue_stats()
+
+
+@app.get("/api/queue/pending")
+async def get_pending_tasks(token: str, agent_name: Optional[str] = None):
+    verify_auth(token, "status")
+    tasks = orchestrator.task_queue.get_pending_tasks(agent_name)
+    return {"tasks": [_task_to_dict(t) for t in tasks]}
 
 
 @app.get("/api/mcp")
