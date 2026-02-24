@@ -1,0 +1,254 @@
+/* ======================== */
+/*  Dashboard Extension CSS  */
+/*  Dark Theme: #1a1a2e bg   */
+/*  Primary: #e94560         */
+/* ======================== */
+
+:root {
+    --dash-bg: #1a1a2e;
+    --dash-sidebar: #16213e;
+    --dash-card: #0f3460;
+    --dash-card-alt: #1a1a2e;
+    --dash-primary: #e94560;
+    --dash-primary-dim: rgba(233, 69, 96, 0.15);
+    --dash-success: #22c55e;
+    --dash-warn: #f59e0b;
+    --dash-danger: #ef4444;
+    --dash-text: #e2e8f0;
+    --dash-muted: #94a3b8;
+    --dash-border: rgba(255, 255, 255, 0.08);
+    --dash-radius: 12px;
+    --dash-shadow: 0 4px 20px rgba(0, 0, 0, 0.4);
+}
+
+/* ======================== */
+/*  Task List               */
+/* ======================== */
+.task-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 0.85rem;
+}
+.task-table th {
+    background: var(--dash-card);
+    color: var(--dash-muted);
+    text-align: left;
+    padding: 0.6rem 0.8rem;
+    font-weight: 500;
+    font-size: 0.75rem;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    border-bottom: 1px solid var(--dash-border);
+}
+.task-table td {
+    padding: 0.6rem 0.8rem;
+    border-bottom: 1px solid var(--dash-border);
+    color: var(--dash-text);
+    vertical-align: middle;
+}
+.task-table tr:last-child td {
+    border-bottom: none;
+}
+.task-table tr:hover td {
+    background: var(--dash-primary-dim);
+}
+
+/* ======================== */
+/*  Task Filter Bar         */
+/* ======================== */
+.filter-bar {
+    display: flex;
+    gap: 0.75rem;
+    margin-bottom: 1rem;
+    flex-wrap: wrap;
+    align-items: center;
+}
+.filter-bar select,
+.filter-bar input[type="text"] {
+    background: var(--bg-input, #1e2235);
+    border: 1px solid var(--dash-border);
+    border-radius: var(--dash-radius);
+    color: var(--dash-text);
+    padding: 0.45rem 0.75rem;
+    font-size: 0.85rem;
+    outline: none;
+}
+.filter-bar select:focus,
+.filter-bar input[type="text"]:focus {
+    border-color: var(--dash-primary);
+}
+.filter-bar button {
+    background: var(--dash-primary);
+    border: none;
+    border-radius: var(--dash-radius);
+    color: #fff;
+    padding: 0.45rem 1rem;
+    font-size: 0.85rem;
+    cursor: pointer;
+}
+.filter-bar button:hover {
+    opacity: 0.85;
+}
+
+/* ======================== */
+/*  Status & Risk Badges    */
+/* ======================== */
+.badge-status,
+.badge-risk {
+    display: inline-block;
+    padding: 0.2rem 0.55rem;
+    border-radius: 6px;
+    font-size: 0.72rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.03em;
+}
+.badge-status.completed  { background: rgba(34,197,94,0.15);  color: var(--dash-success); }
+.badge-status.running    { background: rgba(96,165,250,0.15);  color: #60a5fa; }
+.badge-status.failed     { background: rgba(239,68,68,0.15);   color: var(--dash-danger); }
+.badge-status.pending    { background: rgba(245,158,11,0.15);  color: var(--dash-warn); }
+
+.badge-risk.low    { background: rgba(34,197,94,0.12);  color: var(--dash-success); }
+.badge-risk.medium { background: rgba(245,158,11,0.12); color: var(--dash-warn); }
+.badge-risk.high   { background: rgba(239,68,68,0.12);  color: var(--dash-danger); }
+
+/* ======================== */
+/*  Agent Status Tags       */
+/* ======================== */
+.agent-status-tag {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.3rem;
+    font-size: 0.78rem;
+    font-weight: 600;
+}
+.agent-status-tag::before {
+    content: '';
+    display: inline-block;
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+}
+.agent-status-tag.active::before  { background: var(--dash-success); box-shadow: 0 0 6px var(--dash-success); }
+.agent-status-tag.working::before { background: var(--dash-warn);    box-shadow: 0 0 6px var(--dash-warn); }
+.agent-status-tag.idle::before    { background: #64748b; }
+
+/* ======================== */
+/*  Performance Charts      */
+/* ======================== */
+.chart-section {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 1.25rem;
+    margin-bottom: 1.25rem;
+}
+@media (max-width: 900px) {
+    .chart-section { grid-template-columns: 1fr; }
+}
+.chart-card {
+    background: var(--bg-card, #1a1d2e);
+    border: 1px solid var(--dash-border);
+    border-radius: var(--dash-radius);
+    padding: 1.25rem;
+    box-shadow: var(--dash-shadow);
+}
+.chart-card h4 {
+    font-size: 0.9rem;
+    font-weight: 600;
+    color: var(--dash-text);
+    margin-bottom: 1rem;
+}
+.chart-card canvas {
+    max-height: 240px;
+}
+.chart-card-wide {
+    grid-column: 1 / -1;
+}
+
+/* ======================== */
+/*  Integrations List       */
+/* ======================== */
+.integration-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+    gap: 1rem;
+}
+.integration-card {
+    background: var(--bg-card, #1a1d2e);
+    border: 1px solid var(--dash-border);
+    border-radius: var(--dash-radius);
+    padding: 1rem 1.25rem;
+    display: flex;
+    align-items: center;
+    gap: 0.85rem;
+    box-shadow: var(--dash-shadow);
+}
+.integration-card .integ-icon {
+    font-size: 1.5rem;
+    flex-shrink: 0;
+}
+.integration-card .integ-name {
+    font-size: 0.9rem;
+    font-weight: 600;
+    color: var(--dash-text);
+}
+.integration-card .integ-status {
+    font-size: 0.78rem;
+    margin-top: 0.15rem;
+}
+.integ-status.connected    { color: var(--dash-success); }
+.integ-status.disconnected { color: var(--dash-danger); }
+
+/* ======================== */
+/*  Approval Cards          */
+/* ======================== */
+.approval-card {
+    background: var(--bg-card, #1a1d2e);
+    border: 1px solid var(--dash-border);
+    border-radius: var(--dash-radius);
+    padding: 1.1rem 1.25rem;
+    margin-bottom: 0.85rem;
+    box-shadow: var(--dash-shadow);
+}
+.approval-card-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 0.5rem;
+}
+.approval-card-task {
+    font-size: 0.9rem;
+    margin: 0.35rem 0;
+    color: var(--dash-text);
+}
+.approval-card-meta {
+    font-size: 0.78rem;
+    color: var(--dash-muted);
+    margin-bottom: 0.75rem;
+}
+.approval-card-actions {
+    display: flex;
+    gap: 0.6rem;
+}
+.btn-approve {
+    background: var(--dash-success);
+    border: none;
+    border-radius: 8px;
+    color: #fff;
+    padding: 0.35rem 0.9rem;
+    font-size: 0.82rem;
+    cursor: pointer;
+    font-weight: 600;
+}
+.btn-approve:hover { opacity: 0.85; }
+.btn-reject {
+    background: var(--dash-danger);
+    border: none;
+    border-radius: 8px;
+    color: #fff;
+    padding: 0.35rem 0.9rem;
+    font-size: 0.82rem;
+    cursor: pointer;
+    font-weight: 600;
+}
+.btn-reject:hover { opacity: 0.85; }
