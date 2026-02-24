@@ -1,7 +1,10 @@
 """
-向量資料庫（Qdrant in-memory 模式）
-無需另外部署 Qdrant Server，使用 in-memory 模式。
-支援知識卡片的自動索引與語意搜尋。
+向量資料庫（支援磁碟持久化、遠端 Qdrant Server 及 in-memory 模式）
+預設使用本地磁碟持久化模式（./data/qdrant）。
+可透過環境變數切換模式：
+  VECTOR_STORE_MODE=memory  → in-memory（測試用）
+  QDRANT_HOST / QDRANT_PORT → 遠端 Qdrant Server
+  QDRANT_PATH               → 本地磁碟路徑（預設 ./data/qdrant）
 """
 
 import os
@@ -12,7 +15,7 @@ from typing import Any, Dict, List, Optional
 class VectorStore:
     """
     向量資料庫封裝。
-    - 有 qdrant-client 時：使用 Qdrant in-memory 模式
+    - 有 qdrant-client 時：依環境變數選擇磁碟/遠端/in-memory 模式
     - 無 qdrant-client 時：fallback 到簡單的關鍵字搜尋
     """
 
@@ -30,7 +33,22 @@ class VectorStore:
             from qdrant_client.models import (
                 VectorParams, Distance, PointStruct
             )
-            self._client = QdrantClient(":memory:")
+
+            mode = os.getenv("VECTOR_STORE_MODE", "disk")
+            qdrant_host = os.getenv("QDRANT_HOST", "")
+            qdrant_port = int(os.getenv("QDRANT_PORT", "6333"))
+            qdrant_path = os.getenv("QDRANT_PATH", "./data/qdrant")
+
+            if qdrant_host:
+                # 遠端 Qdrant Server
+                self._client = QdrantClient(host=qdrant_host, port=qdrant_port)
+            elif mode == "memory":
+                # 強制 in-memory（測試用）
+                self._client = QdrantClient(":memory:")
+            else:
+                # 預設：本地磁碟持久化
+                os.makedirs(qdrant_path, exist_ok=True)
+                self._client = QdrantClient(path=qdrant_path)
             self._client.create_collection(
                 collection_name=self.collection_name,
                 vectors_config=VectorParams(
@@ -61,7 +79,13 @@ class VectorStore:
     @property
     def backend_name(self) -> str:
         if self._client is not None:
-            return "Qdrant (in-memory)"
+            mode = os.getenv("VECTOR_STORE_MODE", "disk")
+            qdrant_host = os.getenv("QDRANT_HOST", "")
+            if qdrant_host:
+                return "Qdrant (remote)"
+            if mode == "memory":
+                return "Qdrant (in-memory)"
+            return "Qdrant (disk)"
         return "Keyword Search (fallback)"
 
     def _simple_embedding(self, text: str) -> List[float]:

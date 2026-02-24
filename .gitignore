@@ -16,3 +16,8 @@ env/
 
 # OS
 .DS_Store
+
+# Persistent data (auto-generated at runtime)
+data/qdrant/
+data/sessions.db
+data/*.db

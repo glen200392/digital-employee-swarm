@@ -9,6 +9,7 @@ from typing import Any, Dict, Optional
 from harness.git_memory import GitMemory
 from harness.eval_engine import EvalEngine
 from harness.risk_assessor import RiskAssessor, RiskLevel
+from harness.session_store import SessionStore, SessionRecord
 
 
 class SessionResult:
@@ -47,18 +48,21 @@ class EnterpriseHarness:
     """
 
     def __init__(self, repo_path: Optional[str] = None):
-        self.memory = GitMemory(repo_path)
+        self.session_store = SessionStore()
+        self.memory = GitMemory(repo_path, session_store=self.session_store)
         self.eval_engine = EvalEngine()
         self.risk_assessor = RiskAssessor()
 
     def restore_context(self, agent_name: str) -> Dict[str, Any]:
         """
         Initializer Agent 功能：Session 開始時重建上下文。
-        讀取 Git Log、PROGRESS.md、AGENTS.md 來恢復記憶。
+        優先從 SessionStore（SQLite）恢復；Git Log / PROGRESS.md 作為 fallback。
         """
+        structured = self.session_store.search_context(agent_name)
         context = {
             "agent_name": agent_name,
             "last_progress": self.memory.get_last_context(agent_name),
+            "last_sessions": structured,
             "session_start": datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
         }
         return context
@@ -76,12 +80,27 @@ class EnterpriseHarness:
         """
         Session 結束時的 Commit 操作。
         確保每個 Session 都留下記憶（Anthropic 原則）。
+        同時寫入 SQLite SessionStore。
         """
         status = "COMPLETED" if result.success else "FAILED"
         message = (
             f"{status} | Score: {result.eval_score:.1f} | "
             f"Risk: {result.risk_level.value} | {result.output[:100]}"
         )
+
+        # 寫入 SQLite SessionStore
+        record = SessionRecord(
+            agent_name=result.agent_name,
+            task_id=result.task_id,
+            task=result.output[:500],
+            output=result.output,
+            risk_level=result.risk_level.value,
+            eval_score=result.eval_score,
+            success=result.success,
+            timestamp=result.timestamp,
+        )
+        self.session_store.save_session(record)
+
         self.memory.commit_progress(
             result.agent_name, result.task_id, message
         )

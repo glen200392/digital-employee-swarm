@@ -13,3 +13,8 @@ uvicorn>=0.30.0
 # Testing
 pytest>=8.0.0
 httpx>=0.27.0
+
+# Persistent Storage
+# sqlite3 is built-in Python, no extra dependency needed
+# Optional: for remote Qdrant
+# qdrant-client[fastembed]>=1.10.0

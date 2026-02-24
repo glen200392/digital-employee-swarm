@@ -2,12 +2,15 @@
 Git-based Memory 模組
 實作 Anthropic 建議的 Git-based Memory，確保 Agent 每次 Session 結束後
 都有完整的進度記錄，下次 Session 可以無縫接手。
+同時雙軌寫入 SessionStore（SQLite）以支援跨重啟的持久化查詢。
 """
 
 import os
 import subprocess
 import datetime
-from typing import List, Optional
+from typing import List, Dict, Optional
+
+from harness.session_store import SessionStore, SessionRecord
 
 
 class GitMemory:
@@ -16,12 +19,14 @@ class GitMemory:
     透過檔案日誌 + Git Commit 實現持久化記憶。
     """
 
-    def __init__(self, repo_path: Optional[str] = None):
+    def __init__(self, repo_path: Optional[str] = None,
+                 session_store: Optional[SessionStore] = None):
         if repo_path is None:
             repo_path = os.path.dirname(
                 os.path.dirname(os.path.abspath(__file__))
             )
         self.repo_path = repo_path
+        self.session_store = session_store or SessionStore()
         self._ensure_dirs()
 
     def _ensure_dirs(self):
@@ -45,6 +50,7 @@ class GitMemory:
         """
         將 Agent 的工作進度寫入日誌並嘗試 Git Commit。
         這是 Anthropic「每個 Session 結束必須提交 Git commit」原則的實作。
+        同時雙軌寫入 SessionStore（SQLite）。
         """
         timestamp = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
         log_entry = f"[{timestamp}] [{agent_name}] Task-{task_id}: {message}"
@@ -56,9 +62,25 @@ class GitMemory:
         # 2. 更新 PROGRESS.md
         self._update_progress_md(agent_name, task_id, message, timestamp)
 
+        # 3. 雙軌寫入 SessionStore（SQLite 持久化）
+        try:
+            record = SessionRecord(
+                agent_name=agent_name,
+                task_id=task_id,
+                task=message,
+                output=message,
+                risk_level="LOW",
+                eval_score=0.0,
+                success=True,
+                timestamp=timestamp,
+            )
+            self.session_store.save_session(record)
+        except Exception:
+            pass  # 不影響主流程
+
         print(f"  [Memory] {agent_name} 記憶已更新: {message}")
 
-        # 3. 嘗試 Git Commit
+        # 4. 嘗試 Git Commit
         self._try_git_commit(agent_name, task_id)
 
     def _update_progress_md(self, agent_name: str, task_id: str,
@@ -100,8 +122,20 @@ class GitMemory:
     def get_last_context(self, agent_name: str, max_entries: int = 5) -> List[str]:
         """
         讀取指定 Agent 最近 N 條記憶記錄。
-        這是 Initializer Agent「重建上下文」的核心。
+        優先從 SessionStore（SQLite）讀取；若無記錄則 fallback 到文字日誌。
         """
+        # 優先從 SQLite 讀取
+        try:
+            structured = self.session_store.search_context(agent_name, max_entries)
+            if structured:
+                return [
+                    f"[{s['timestamp']}] [{agent_name}] Task-{s['task_id']}: {s['task']}"
+                    for s in structured
+                ]
+        except Exception:
+            pass
+
+        # Fallback: 文字日誌
         if not os.path.exists(self.log_file):
             return []
 
@@ -118,6 +152,17 @@ class GitMemory:
             pass
 
         return results
+
+    def get_last_context_structured(self, agent_name: str,
+                                    limit: int = 5) -> List[Dict]:
+        """
+        回傳結構化的 Session 上下文列表（List[Dict]）。
+        供需要結構化資料的呼叫端使用。
+        """
+        try:
+            return self.session_store.search_context(agent_name, limit)
+        except Exception:
+            return []
 
     def get_all_progress(self) -> List[str]:
         """讀取全部進度日誌"""
