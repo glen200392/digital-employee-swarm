@@ -7,6 +7,7 @@
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="/static/style.css">
+    <link rel="stylesheet" href="/static/css/dashboard.css">
 </head>
 <body>
     <!-- Login Screen -->
@@ -34,28 +35,36 @@
             </div>
             <ul class="nav-list">
                 <li class="nav-item active" data-view="overview">
-                    <span class="nav-icon">📊</span>
+                    <span class="nav-icon">🏠</span>
                     <span>總覽</span>
+                </li>
+                <li class="nav-item" data-view="agents">
+                    <span class="nav-icon">👥</span>
+                    <span>AI 員工</span>
+                </li>
+                <li class="nav-item" data-view="tasks">
+                    <span class="nav-icon">📋</span>
+                    <span>任務管理</span>
+                </li>
+                <li class="nav-item" data-view="approvals">
+                    <span class="nav-icon">✅</span>
+                    <span>審批中心</span>
+                </li>
+                <li class="nav-item" data-view="performance">
+                    <span class="nav-icon">📊</span>
+                    <span>績效分析</span>
+                </li>
+                <li class="nav-item" data-view="integrations">
+                    <span class="nav-icon">🔌</span>
+                    <span>整合管理</span>
                 </li>
                 <li class="nav-item" data-view="chat">
                     <span class="nav-icon">💬</span>
                     <span>Agent 對話</span>
                 </li>
-                <li class="nav-item" data-view="agents">
-                    <span class="nav-icon">🤖</span>
-                    <span>Agent Fleet</span>
-                </li>
-                <li class="nav-item" data-view="history">
-                    <span class="nav-icon">📜</span>
-                    <span>任務歷史</span>
-                </li>
                 <li class="nav-item" data-view="system">
                     <span class="nav-icon">⚙️</span>
-                    <span>系統監控</span>
-                </li>
-                <li class="nav-item" data-view="approvals">
-                    <span class="nav-icon">🔐</span>
-                    <span>審批管理</span>
+                    <span>系統設定</span>
                 </li>
             </ul>
             <div class="sidebar-footer">
@@ -179,9 +188,96 @@
                     </div>
                 </div>
             </div>
+
+            <!-- Tasks View -->
+            <div id="view-tasks" class="view">
+                <div class="panel">
+                    <div class="filter-bar">
+                        <select id="filter-agent">
+                            <option value="">所有 Agent</option>
+                            <option value="KM_AGENT">KM_AGENT</option>
+                            <option value="PROCESS_AGENT">PROCESS_AGENT</option>
+                            <option value="TALENT_AGENT">TALENT_AGENT</option>
+                            <option value="DECISION_AGENT">DECISION_AGENT</option>
+                        </select>
+                        <select id="filter-status">
+                            <option value="">所有狀態</option>
+                            <option value="completed">COMPLETED</option>
+                            <option value="running">RUNNING</option>
+                            <option value="failed">FAILED</option>
+                        </select>
+                        <select id="filter-risk">
+                            <option value="">所有風險</option>
+                            <option value="LOW">LOW</option>
+                            <option value="MEDIUM">MEDIUM</option>
+                            <option value="HIGH">HIGH</option>
+                        </select>
+                        <input type="text" id="filter-search" placeholder="搜尋 Task ID...">
+                        <button id="filter-apply">🔍 篩選</button>
+                        <button id="filter-clear" style="background:var(--bg-card,#1a1d2e);color:var(--text-secondary,#8b8fa3);border:1px solid var(--border)">✕ 清除</button>
+                        <span id="tasks-count" style="font-size:0.82rem;color:var(--text-secondary,#8b8fa3);margin-left:auto"></span>
+                    </div>
+                    <div style="overflow-x:auto">
+                        <table class="task-table">
+                            <thead>
+                                <tr>
+                                    <th>Task ID</th>
+                                    <th>Agent</th>
+                                    <th>狀態</th>
+                                    <th>評分</th>
+                                    <th>風險</th>
+                                    <th>時間</th>
+                                </tr>
+                            </thead>
+                            <tbody id="tasks-table-body">
+                                <tr><td colspan="6" style="text-align:center;padding:2rem;color:var(--text-secondary,#8b8fa3)">載入中...</td></tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Performance View -->
+            <div id="view-performance" class="view">
+                <div style="display:flex;align-items:center;gap:1.5rem;margin-bottom:1rem">
+                    <div class="stat-card" style="flex:0 0 auto;min-width:140px">
+                        <div class="stat-value" id="perf-total-tasks">—</div>
+                        <div class="stat-label">總任務數</div>
+                    </div>
+                </div>
+                <div class="chart-section">
+                    <div class="chart-card chart-card-wide">
+                        <h4>📈 各 Agent 評分趨勢（過去 7 天）</h4>
+                        <canvas id="trendChart"></canvas>
+                    </div>
+                    <div class="chart-card">
+                        <h4>✅ 任務成功率</h4>
+                        <canvas id="rateChart"></canvas>
+                    </div>
+                    <div class="chart-card">
+                        <h4>⚡ 風險等級分佈</h4>
+                        <canvas id="riskChart"></canvas>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Integrations View -->
+            <div id="view-integrations" class="view">
+                <div class="panel">
+                    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:1rem">
+                        <h3>🔌 MCP 資源連接狀態</h3>
+                        <button onclick="loadIntegrations()" class="btn-primary" style="padding:0.4rem 1rem;font-size:0.85rem">🔄 刷新</button>
+                    </div>
+                    <div id="integrations-grid" class="integration-grid">
+                        <p class="empty-msg">載入中...</p>
+                    </div>
+                </div>
+            </div>
         </main>
     </div>
 
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
     <script src="/static/app.js"></script>
+    <script src="/static/js/dashboard.js"></script>
 </body>
 </html>

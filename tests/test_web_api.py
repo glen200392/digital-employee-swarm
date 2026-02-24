@@ -89,3 +89,75 @@ class TestWebAPI:
         res = self.client.post("/api/search",
                                json={"query": "test", "top_k": 3})
         assert res.status_code == 200
+
+    def test_tasks(self):
+        token = self._login()
+        res = self.client.get(f"/api/tasks?token={token}")
+        assert res.status_code == 200
+        data = res.json()
+        assert "tasks" in data
+        assert "total" in data
+
+    def test_tasks_filter(self):
+        token = self._login()
+        res = self.client.get(f"/api/tasks?token={token}&agent=KM_AGENT&risk=LOW")
+        assert res.status_code == 200
+        data = res.json()
+        assert "tasks" in data
+
+    def test_metrics(self):
+        token = self._login()
+        res = self.client.get(f"/api/metrics?token={token}")
+        assert res.status_code == 200
+        data = res.json()
+        assert "days" in data
+        assert "trend_data" in data
+        assert "success_rate" in data
+        assert "risk_distribution" in data
+        assert len(data["days"]) == 7
+
+    def test_integrations(self):
+        token = self._login()
+        res = self.client.get(f"/api/integrations?token={token}")
+        assert res.status_code == 200
+        data = res.json()
+        assert "integrations" in data
+        for item in data["integrations"]:
+            assert "name" in item
+            assert "connected" in item
+
+    def test_approvals_resolve_approve(self):
+        token = self._login()
+        from harness.hitl_manager import HITLManager
+        from web.app import hitl
+        req = hitl.check_and_gate("測試任務", "KM_AGENT", "HIGH", "測試")
+        rid = req.request_id
+        res = self.client.post(f"/api/approvals/{rid}/resolve",
+                               json={"token": token, "action": "approve"})
+        assert res.status_code == 200
+        assert res.json()["status"] == "APPROVED"
+
+    def test_approvals_resolve_reject(self):
+        token = self._login()
+        from web.app import hitl
+        req = hitl.check_and_gate("測試任務2", "KM_AGENT", "HIGH", "測試")
+        rid = req.request_id
+        res = self.client.post(f"/api/approvals/{rid}/resolve",
+                               json={"token": token, "action": "reject", "note": "不批准"})
+        assert res.status_code == 200
+        assert res.json()["status"] == "REJECTED"
+
+    def test_approvals_resolve_not_found(self):
+        token = self._login()
+        res = self.client.post("/api/approvals/nonexistent-id/resolve",
+                               json={"token": token, "action": "approve"})
+        assert res.status_code == 404
+
+    def test_approvals_resolve_invalid_action(self):
+        token = self._login()
+        from web.app import hitl
+        req = hitl.check_and_gate("測試任務3", "KM_AGENT", "HIGH", "測試")
+        rid = req.request_id
+        res = self.client.post(f"/api/approvals/{rid}/resolve",
+                               json={"token": token, "action": "invalid"})
+        assert res.status_code == 400

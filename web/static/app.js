@@ -50,13 +50,19 @@ $$('.nav-item').forEach(item => {
         $(`#view-${currentView}`).classList.add('active');
         const titles = {
             overview: '系統總覽', chat: 'Agent 對話',
-            agents: 'Agent Fleet', history: '任務歷史', system: '系統監控'
+            agents: 'AI 員工', history: '任務歷史',
+            system: '系統設定', approvals: '審批中心',
+            tasks: '任務管理', performance: '績效分析',
+            integrations: '整合管理',
         };
         $('#page-title').textContent = titles[currentView] || '';
         if (currentView === 'history') loadHistory();
         if (currentView === 'agents') loadAgents();
         if (currentView === 'system') loadSystem();
         if (currentView === 'approvals') loadApprovals();
+        if (currentView === 'tasks') loadTasks();
+        if (currentView === 'performance') loadPerformance();
+        if (currentView === 'integrations') loadIntegrations();
     });
 });
 
@@ -354,6 +360,7 @@ document.addEventListener('DOMContentLoaded', () => {
 // Auto-refresh approvals every 30 seconds when on approvals view
 setInterval(() => {
     if (currentView === 'approvals') loadApprovals();
+    if (currentView === 'overview') loadDashboard();
 }, 30000);
 
 // Auto-refresh
