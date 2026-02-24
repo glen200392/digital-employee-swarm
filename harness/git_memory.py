@@ -61,9 +61,32 @@ class GitMemory:
         # 3. 嘗試 Git Commit
         self._try_git_commit(agent_name, task_id)
 
+    def _is_duplicate(self, agent_name: str, task_id: str) -> bool:
+        """
+        檢查 PROGRESS.md 最後 N 行中是否已存在相同的 (agent_name, task_id)。
+        使用精確的欄位比對（管道符號分隔），避免部分字串誤判。
+        """
+        if not os.path.exists(self.progress_md):
+            return False
+        # PROGRESS.md 每行格式: | timestamp | agent_name | task_id | message |
+        agent_token = f"| {agent_name} |"
+        task_token = f"| {task_id} |"
+        try:
+            with open(self.progress_md, "r", encoding="utf-8") as f:
+                lines = f.readlines()
+            for line in reversed(lines[-50:]):
+                if agent_token in line and task_token in line:
+                    return True
+        except Exception:
+            pass
+        return False
+
     def _update_progress_md(self, agent_name: str, task_id: str,
                             message: str, timestamp: str):
         """更新 PROGRESS.md 進度追蹤文件"""
+        if self._is_duplicate(agent_name, task_id):
+            return
+
         entry = f"| {timestamp} | {agent_name} | {task_id} | {message} |\n"
 
         if not os.path.exists(self.progress_md):
