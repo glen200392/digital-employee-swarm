@@ -7,9 +7,10 @@ import datetime
 from typing import Any, Dict, Optional
 
 from harness.git_memory import GitMemory
-from harness.eval_engine import EvalEngine
+from harness.eval_engine import EvalEngine, LLMJudgeEvalEngine
 from harness.risk_assessor import RiskAssessor, RiskLevel
 from harness.hitl_manager import HITLManager, ApprovalStatus
+from harness.llm_provider import LLMProvider
 
 
 class SessionResult:
@@ -49,7 +50,8 @@ class EnterpriseHarness:
 
     def __init__(self, repo_path: Optional[str] = None):
         self.memory = GitMemory(repo_path)
-        self.eval_engine = EvalEngine()
+        llm_provider = LLMProvider()
+        self.eval_engine = LLMJudgeEvalEngine(llm_provider=llm_provider)
         self.risk_assessor = RiskAssessor()
         self.hitl = HITLManager()
 

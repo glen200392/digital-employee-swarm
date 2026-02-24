@@ -4,6 +4,7 @@ Agent 評估引擎
 """
 
 import datetime
+import json
 from typing import Dict, List, Optional
 from dataclasses import dataclass, field
 
@@ -16,6 +17,38 @@ class EvalRecord:
     score: float
     timestamp: str
     feedback: str = ""
+    dimensions: Dict[str, float] = field(default_factory=dict)
+    judge_mode: str = "keyword"  # "llm" | "keyword"
+
+
+JUDGE_PROMPT = """
+你是一位嚴格的 AI 輸出品質評審。請對以下 AI Agent 的輸出進行客觀評分。
+
+**任務**：{task}
+**Agent 名稱**：{agent_name}
+**Agent 輸出**：
+{output}
+
+請從以下四個維度各自評分（0.0~1.0），並給出整體分數：
+
+1. **任務完成度**（Task Completion）：輸出是否完整回應了任務的所有要求？
+2. **內容準確性**（Accuracy）：資訊是否正確、可靠、無明顯錯誤？
+3. **結構清晰度**（Clarity）：格式是否易於閱讀，邏輯是否清晰？
+4. **可執行性**（Actionability）：建議是否具體可落地，企業可直接使用？
+
+請嚴格按照此 JSON 格式輸出，不要有多餘文字：
+{{
+  "overall_score": 0.0,
+  "dimensions": {{
+    "task_completion": 0.0,
+    "accuracy": 0.0,
+    "clarity": 0.0,
+    "actionability": 0.0
+  }},
+  "feedback": "簡短的改進建議（繁體中文，50字以內）",
+  "pass": true
+}}
+"""
 
 
 class EvalEngine:
@@ -59,6 +92,7 @@ class EvalEngine:
             task=task,
             score=final_score,
             timestamp=datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
+            judge_mode="keyword",
         )
         self.history.append(record)
 
@@ -133,3 +167,74 @@ class EvalEngine:
                 f"Pass rate: {stats['pass_rate']:.0%}"
             )
         return "\n".join(lines)
+
+
+class LLMJudgeEvalEngine(EvalEngine):
+    """
+    LLM-as-Judge 多維度評估引擎。
+
+    有 LLM 時：呼叫 LLM 進行 Judge 評估，解析 JSON 結果。
+    無 LLM 時：fallback 到關鍵字符號計分，保持向後相容。
+    """
+
+    def __init__(self, pass_score: float = 0.7, llm_provider=None):
+        super().__init__(pass_score=pass_score)
+        self.llm_provider = llm_provider
+
+    def evaluate(self, agent_name: str, task: str, output: str) -> float:
+        """
+        評估 Agent 輸出品質。
+        有 LLM 時使用 Judge 模式，否則 fallback 到關鍵字模式。
+        """
+        if self.llm_provider and getattr(self.llm_provider, "is_llm_available", False):
+            return self._evaluate_with_llm(agent_name, task, output)
+        return self._evaluate_keyword(agent_name, task, output)
+
+    def _evaluate_with_llm(self, agent_name: str, task: str, output: str) -> float:
+        """使用 LLM Judge 評估，JSON 解析失敗時 fallback"""
+        prompt = JUDGE_PROMPT.format(
+            task=task,
+            agent_name=agent_name,
+            output=output,
+        )
+        try:
+            response = self.llm_provider.chat(prompt, max_tokens=512)
+            data = json.loads(response)
+            overall = float(data.get("overall_score", 0.0))
+            overall = max(0.0, min(1.0, overall))
+            dimensions = {
+                k: max(0.0, min(1.0, float(v)))
+                for k, v in data.get("dimensions", {}).items()
+            }
+            feedback = str(data.get("feedback", ""))
+            record = EvalRecord(
+                agent_name=agent_name,
+                task=task,
+                score=overall,
+                timestamp=datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
+                feedback=feedback,
+                dimensions=dimensions,
+                judge_mode="llm",
+            )
+            self.history.append(record)
+            return overall
+        except Exception:
+            return self._evaluate_keyword(agent_name, task, output)
+
+    def _evaluate_keyword(self, agent_name: str, task: str, output: str) -> float:
+        """關鍵字符號計分（fallback 模式）"""
+        scores = [
+            self._eval_structure(output),
+            self._eval_content_richness(output),
+            self._eval_relevance(task, output),
+        ]
+        final_score = sum(scores) / len(scores)
+        record = EvalRecord(
+            agent_name=agent_name,
+            task=task,
+            score=final_score,
+            timestamp=datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
+            judge_mode="keyword",
+        )
+        self.history.append(record)
+        return final_score

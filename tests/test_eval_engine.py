@@ -5,7 +5,7 @@ import sys
 
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
 
-from harness.eval_engine import EvalEngine
+from harness.eval_engine import EvalEngine, LLMJudgeEvalEngine
 
 
 class TestEvalEngine:
@@ -62,3 +62,69 @@ class TestEvalEngine:
         self.engine.evaluate("A", "t", "o")
         report = self.engine.get_report()
         assert "Eval Engine Report" in report
+
+
+class TestLLMJudgeEvalEngine:
+    def setup_method(self):
+        self.engine = LLMJudgeEvalEngine(pass_score=0.7, llm_provider=None)
+
+    def test_fallback_mode(self):
+        """無 LLM 時應 fallback 到關鍵字模式"""
+        score = self.engine.evaluate("TEST", "task", "output")
+        assert 0.0 <= score <= 1.0
+        assert self.engine.history[-1].judge_mode == "keyword"
+
+    def test_score_range(self):
+        """分數必須在 0.0~1.0 之間"""
+        for output in ["", "x", "# Title\n- item\n" * 10]:
+            score = self.engine.evaluate("TEST", "task", output)
+            assert 0.0 <= score <= 1.0
+
+    def test_dimensions_present(self):
+        """有 LLM 時，EvalRecord 應包含四個維度分數"""
+        import json
+
+        class MockLLMProvider:
+            is_llm_available = True
+
+            def chat(self, prompt, max_tokens=512):
+                return json.dumps({
+                    "overall_score": 0.85,
+                    "dimensions": {
+                        "task_completion": 0.9,
+                        "accuracy": 0.8,
+                        "clarity": 0.85,
+                        "actionability": 0.85,
+                    },
+                    "feedback": "良好輸出",
+                    "pass": True,
+                })
+
+        engine = LLMJudgeEvalEngine(pass_score=0.7, llm_provider=MockLLMProvider())
+        score = engine.evaluate("A", "task", "some output")
+        assert score == 0.85
+        record = engine.history[-1]
+        assert record.judge_mode == "llm"
+        assert set(record.dimensions.keys()) == {
+            "task_completion", "accuracy", "clarity", "actionability"
+        }
+
+    def test_json_parse_failure_fallback(self):
+        """JSON 解析失敗時應正常 fallback，不拋出例外"""
+        class BadLLMProvider:
+            is_llm_available = True
+
+            def chat(self, prompt, max_tokens=512):
+                return "not valid json {{{"
+
+        engine = LLMJudgeEvalEngine(pass_score=0.7, llm_provider=BadLLMProvider())
+        score = engine.evaluate("A", "task", "output")
+        assert 0.0 <= score <= 1.0
+        assert engine.history[-1].judge_mode == "keyword"
+
+    def test_high_quality_output_scores_higher(self):
+        """結構完整、內容豐富的輸出應獲得比空輸出更高的分數"""
+        empty_score = self.engine.evaluate("A", "萃取知識", "")
+        rich_output = "# 知識卡片\n- 項目1\n- 項目2: 詳細說明\n萃取知識相關內容\n" * 20
+        rich_score = self.engine.evaluate("A", "萃取知識", rich_output)
+        assert rich_score > empty_score
