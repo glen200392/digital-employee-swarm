@@ -96,11 +96,8 @@ class MasterOrchestrator:
         # 意圖分析（補充信心度）
         classified_agent, confidence = self.classifier.classify(user_prompt)
         # 如果 TaskPlanner 指定了 agent，優先使用
-        if agent_name and agent_name != "UNKNOWN":
-            pass  # keep agent_name from planner
-        else:
+        if not agent_name or agent_name == "UNKNOWN":
             agent_name = classified_agent
-            confidence = confidence
 
         print(f"[Orchestrator] 意圖識別 → {agent_name} (信心度: {confidence:.0%})")
 
