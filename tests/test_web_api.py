@@ -152,3 +152,12 @@ class TestWebAPI:
         res = self.client.post("/api/approvals/nonexistent-id/resolve",
                                json={"token": token, "action": "approve"})
         assert res.status_code == 404
+
+    def test_approvals_resolve_invalid_action(self):
+        token = self._login()
+        from web.app import hitl
+        req = hitl.check_and_gate("測試任務3", "KM_AGENT", "HIGH", "測試")
+        rid = req.request_id
+        res = self.client.post(f"/api/approvals/{rid}/resolve",
+                               json={"token": token, "action": "invalid"})
+        assert res.status_code == 400

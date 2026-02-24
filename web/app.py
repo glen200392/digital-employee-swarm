@@ -216,6 +216,8 @@ async def expire_approvals(token: str):
 async def resolve_request(request_id: str, body: ResolveActionRequest):
     """通用審批端點：action 為 'approve' 或 'reject'"""
     verify_auth(body.token, "approvals")
+    if body.action.lower() not in ("approve", "reject"):
+        raise HTTPException(status_code=400, detail="action 必須為 'approve' 或 'reject'")
     req = hitl.get_request(request_id)
     if not req:
         raise HTTPException(status_code=404, detail="審批請求不存在")

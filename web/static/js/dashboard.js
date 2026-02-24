@@ -17,7 +17,7 @@ async function loadTasks() {
 
     try {
         const res = await fetch(`${API}/api/tasks?${params}`);
-        if (!res.ok) return;
+        if (!res.ok) { console.error('loadTasks failed:', res.status); return; }
         const data = await res.json();
         let tasks = data.tasks || [];
 
@@ -99,7 +99,7 @@ let perfCharts = {};
 async function loadPerformance() {
     try {
         const res = await fetch(`${API}/api/metrics?token=${token}`);
-        if (!res.ok) return;
+        if (!res.ok) { console.error('loadPerformance failed:', res.status); return; }
         const data = await res.json();
         renderPerformanceCharts(data);
     } catch (err) { console.error('loadPerformance error:', err); }
@@ -218,7 +218,7 @@ function renderPerformanceCharts(data) {
 async function loadIntegrations() {
     try {
         const res = await fetch(`${API}/api/integrations?token=${token}`);
-        if (!res.ok) return;
+        if (!res.ok) { console.error('loadIntegrations failed:', res.status); return; }
         const data = await res.json();
         renderIntegrations(data.integrations || []);
     } catch (err) { console.error('loadIntegrations error:', err); }
