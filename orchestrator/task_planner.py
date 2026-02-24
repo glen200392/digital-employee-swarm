@@ -3,6 +3,7 @@ Task Planner — 複雜任務拆解與多 Agent 協作
 將複合任務拆解為子任務序列，支援 Sequential / Parallel 兩種執行模式。
 """
 import uuid
+import re
 import concurrent.futures
 from dataclasses import dataclass, field
 from typing import List, Dict, Any, Optional, Callable
@@ -48,8 +49,18 @@ _AGENT_KEYWORD_MAP: List[tuple] = [
     (["決策", "分析", "風險", "比較", "數據", "建議"],  "DECISION_AGENT"),
 ]
 
-# 任務被視為複合任務的觸發詞
-_COMPOUND_TRIGGERS = _PARALLEL_KEYWORDS + _SEQUENTIAL_KEYWORDS + ["且", "and"]
+# 任務被視為複合任務的觸發詞（且 不在 _PARALLEL_KEYWORDS 中，故單獨加入）
+_COMPOUND_TRIGGERS = _PARALLEL_KEYWORDS + _SEQUENTIAL_KEYWORDS + ["且"]
+
+# 截斷前置結果的最大長度（供 SEQUENTIAL 模式傳遞上下文用）
+_MAX_PREV_RESULT_LENGTH = 200
+
+# 分割複合任務的 regex（從既有關鍵字動態建構）
+_SPLIT_SEPARATOR_RE = (
+    r"[，,、；;]"
+    + "|" + "|".join(re.escape(kw) for kw in _PARALLEL_KEYWORDS + _SEQUENTIAL_KEYWORDS if kw != "and")
+    + r"|and\b"
+)
 
 
 def _detect_agent(text: str) -> str:
@@ -63,9 +74,7 @@ def _detect_agent(text: str) -> str:
 
 def _split_task_text(task: str) -> List[str]:
     """將複合任務文字拆成多個子句。"""
-    import re
-    # 以常見分隔詞切割
-    parts = re.split(r"[，,、；;]|並且|同時|以及|然後|接著|之後|and\b", task, flags=re.IGNORECASE)
+    parts = re.split(_SPLIT_SEPARATOR_RE, task, flags=re.IGNORECASE)
     return [p.strip() for p in parts if p.strip()]
 
 
@@ -272,7 +281,7 @@ class TaskPlanner:
             st.status = "RUNNING"
             task_input = st.task
             if prev_result:
-                task_input = f"{st.task}（前置結果參考：{prev_result[:200]}）"
+                task_input = f"{st.task}（前置結果參考：{prev_result[:_MAX_PREV_RESULT_LENGTH]}）"
             try:
                 st.result = executor(task_input)
                 st.status = "COMPLETED"
