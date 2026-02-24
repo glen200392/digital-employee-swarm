@@ -159,6 +159,7 @@ class AgentProfile:
 
     def to_dict(self) -> Dict:
         """序列化為字典"""
+        today_snap = self.get_today_snapshot()
         return {
             "agent_name": self.agent_name,
             "role": self.role,
@@ -199,12 +200,12 @@ class AgentProfile:
                 for p in self.performance_history
             ],
             "today_snapshot": {
-                "date": self.get_today_snapshot().date,
-                "tasks_completed": self.get_today_snapshot().tasks_completed,
-                "avg_score": self.get_today_snapshot().avg_score,
-                "success_rate": self.get_today_snapshot().success_rate,
-                "avg_response_time_sec": self.get_today_snapshot().avg_response_time_sec,
-                "tokens_used": self.get_today_snapshot().tokens_used,
+                "date": today_snap.date,
+                "tasks_completed": today_snap.tasks_completed,
+                "avg_score": today_snap.avg_score,
+                "success_rate": today_snap.success_rate,
+                "avg_response_time_sec": today_snap.avg_response_time_sec,
+                "tokens_used": today_snap.tokens_used,
             },
         }
 
