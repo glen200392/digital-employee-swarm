@@ -106,7 +106,7 @@ class TaskQueue:
     ) -> str:
         """加入任務，返回 task_id"""
         task_id = str(uuid.uuid4())
-        now = datetime.datetime.utcnow().isoformat()
+        now = datetime.datetime.now(datetime.timezone.utc).isoformat()
         meta_json = json.dumps(metadata or {})
 
         with sqlite3.connect(self.db_path) as conn:
@@ -169,7 +169,7 @@ class TaskQueue:
 
     def get_queue_stats(self) -> Dict:
         """返回佇列統計資訊"""
-        today = datetime.datetime.utcnow().date().isoformat()
+        today = datetime.datetime.now(datetime.timezone.utc).date().isoformat()
         with sqlite3.connect(self.db_path) as conn:
             pending = conn.execute(
                 "SELECT COUNT(*) FROM tasks WHERE status=?",
@@ -275,7 +275,7 @@ class TaskQueue:
                 if row is None:
                     return None
                 task = self._row_to_task(row)
-                now = datetime.datetime.utcnow().isoformat()
+                now = datetime.datetime.now(datetime.timezone.utc).isoformat()
                 conn.execute(
                     "UPDATE tasks SET status=?, started_at=? WHERE task_id=? AND status=?",
                     (TaskStatus.RUNNING.value, now, task.task_id, TaskStatus.PENDING.value),
@@ -301,7 +301,7 @@ class TaskQueue:
             if self.agent_executor is None:
                 raise RuntimeError("No agent_executor configured")
             result = self.agent_executor(task.agent_name, task.instruction)
-            now = datetime.datetime.utcnow().isoformat()
+            now = datetime.datetime.now(datetime.timezone.utc).isoformat()
             with sqlite3.connect(self.db_path) as conn:
                 conn.execute(
                     "UPDATE tasks SET status=?, completed_at=?, result=? WHERE task_id=?",
@@ -324,7 +324,7 @@ class TaskQueue:
             if task.retry_count <= task.max_retries:
                 self._retry_with_backoff(task)
             else:
-                now = datetime.datetime.utcnow().isoformat()
+                now = datetime.datetime.now(datetime.timezone.utc).isoformat()
                 with sqlite3.connect(self.db_path) as conn:
                     conn.execute(
                         "UPDATE tasks SET status=?, completed_at=?, error=? WHERE task_id=?",
