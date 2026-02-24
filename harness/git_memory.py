@@ -81,8 +81,8 @@ class GitMemory:
                 timestamp=timestamp,
             )
             self.session_store.save_session(record)
-        except Exception:
-            pass  # 不影響主流程
+        except Exception as e:
+            print(f"  [Memory] SessionStore 寫入失敗（非致命）: {e}")
 
         print(f"  [Memory] {agent_name} 記憶已更新: {message}")
 
@@ -138,8 +138,8 @@ class GitMemory:
                     f"[{s['timestamp']}] [{agent_name}] Task-{s['task_id']}: {s['task']}"
                     for s in structured
                 ]
-        except Exception:
-            pass
+        except Exception as e:
+            print(f"  [Memory] SQLite 讀取失敗，切換至文字日誌 fallback: {e}")
 
         # Fallback: 文字日誌
         if not os.path.exists(self.log_file):
@@ -167,7 +167,8 @@ class GitMemory:
         """
         try:
             return self.session_store.search_context(agent_name, limit)
-        except Exception:
+        except Exception as e:
+            print(f"  [Memory] get_last_context_structured 失敗: {e}")
             return []
 
     def get_all_progress(self) -> List[str]:

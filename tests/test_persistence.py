@@ -135,10 +135,11 @@ class TestVectorStoreDiskMode:
         try:
             from harness.vector_store import VectorStore
             vs = VectorStore(collection_name="test_col")
-            if vs.is_vector_mode:
-                assert os.path.exists(qdrant_path)
-        except Exception:
-            pass  # qdrant disk mode may not be available in CI
+            if not vs.is_vector_mode:
+                pytest.skip("qdrant-client disk mode not available in CI")
+            assert os.path.exists(qdrant_path)
+        except ImportError:
+            pytest.skip("qdrant-client not installed")
         finally:
             os.environ.pop("QDRANT_PATH", None)
             os.environ["VECTOR_STORE_MODE"] = "memory"
