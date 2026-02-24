@@ -18,6 +18,7 @@ import json
 from orchestrator.router import MasterOrchestrator
 from harness.vector_store import VectorStore
 from harness.hitl_manager import HITLManager, ApprovalAction
+from harness.session_store import SessionStore
 from web.auth import AuthManager, Role
 
 # === 全域初始化 ===
@@ -26,6 +27,7 @@ orchestrator = MasterOrchestrator()
 vector_store = VectorStore()
 auth = AuthManager()
 hitl = HITLManager()
+session_store = SessionStore()
 
 # 索引知識庫
 project_root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
@@ -57,6 +59,13 @@ class SearchRequest(BaseModel):
 
 class ResolveRequest(BaseModel):
     token: str
+    resolved_by: str = "admin"
+    note: str = ""
+
+
+class ResolveActionRequest(BaseModel):
+    token: str
+    action: str           # "approve" or "reject"
     resolved_by: str = "admin"
     note: str = ""
 
@@ -203,6 +212,24 @@ async def expire_approvals(token: str):
     return {"expired_count": len(expired), "expired_ids": expired}
 
 
+@app.post("/api/approvals/{request_id}/resolve")
+async def resolve_request(request_id: str, body: ResolveActionRequest):
+    """通用審批端點：action 為 'approve' 或 'reject'"""
+    verify_auth(body.token, "approvals")
+    req = hitl.get_request(request_id)
+    if not req:
+        raise HTTPException(status_code=404, detail="審批請求不存在")
+    action_enum = (
+        ApprovalAction.APPROVE if body.action.lower() == "approve"
+        else ApprovalAction.REJECT
+    )
+    updated = hitl.resolve(
+        request_id, action_enum,
+        resolved_by=body.resolved_by, note=body.note,
+    )
+    return _approval_to_dict(updated)
+
+
 @app.get("/api/mcp")
 async def get_mcp(token: str):
     verify_auth(token, "mcp")
@@ -224,6 +251,85 @@ async def get_skills(token: str):
             "tags": s.tags,
         })
     return {"skills": skills}
+
+
+@app.get("/api/tasks")
+async def get_tasks(token: str, agent: str = "", status: str = "", risk: str = "", limit: int = 50):
+    """從 SessionStore 讀取任務歷史，支援按 agent/status/risk 過濾"""
+    verify_auth(token, "history")
+    sessions = session_store.list_sessions(agent_name=agent or None, limit=limit)
+    if status:
+        sessions = [s for s in sessions if s.get("status", "").upper() == status.upper()]
+    if risk:
+        sessions = [s for s in sessions if s.get("risk_level", "").upper() == risk.upper()]
+    return {"tasks": sessions, "total": len(sessions)}
+
+
+@app.get("/api/metrics")
+async def get_metrics(token: str):
+    """統計各 Agent 的績效指標（近 7 天趨勢 + 成功率 + 風險分佈）"""
+    verify_auth(token, "history")
+    import datetime
+    import collections
+    all_sessions = session_store.list_sessions(limit=500)
+    cutoff = (datetime.datetime.now() - datetime.timedelta(days=7)).strftime("%Y-%m-%d")
+    recent = [s for s in all_sessions if s.get("created_at", "") >= cutoff]
+
+    agent_names = ["KM_AGENT", "PROCESS_AGENT", "TALENT_AGENT", "DECISION_AGENT"]
+
+    # 各 Agent 評分趨勢（過去 7 天，每天平均分）
+    trends: dict = {a: collections.defaultdict(list) for a in agent_names}
+    for s in recent:
+        day = s.get("created_at", "")[:10]
+        name = s.get("agent_name", "")
+        if name in trends:
+            trends[name][day].append(s.get("eval_score", 0.0))
+
+    days = [(datetime.datetime.now() - datetime.timedelta(days=i)).strftime("%Y-%m-%d")
+            for i in range(6, -1, -1)]
+    trend_data = {}
+    for a in agent_names:
+        trend_data[a] = [
+            round(sum(trends[a][d]) / len(trends[a][d]), 3) if trends[a][d] else 0.0
+            for d in days
+        ]
+
+    # 成功率
+    success_rate = {}
+    for a in agent_names:
+        agent_sessions = [s for s in all_sessions if s.get("agent_name") == a]
+        if not agent_sessions:
+            success_rate[a] = 0.0
+        else:
+            ok = [s for s in agent_sessions if s.get("eval_score", 0) >= 0.7]
+            success_rate[a] = round(len(ok) / len(agent_sessions), 3)
+
+    # 風險分佈
+    risk_counts = {"LOW": 0, "MEDIUM": 0, "HIGH": 0}
+    for s in all_sessions:
+        lvl = s.get("risk_level", "LOW").upper()
+        if lvl in risk_counts:
+            risk_counts[lvl] += 1
+
+    return {
+        "days": days,
+        "trend_data": trend_data,
+        "success_rate": success_rate,
+        "risk_distribution": risk_counts,
+        "total_tasks": len(all_sessions),
+    }
+
+
+@app.get("/api/integrations")
+async def get_integrations(token: str):
+    """返回 MCP 資源連接狀態"""
+    verify_auth(token, "mcp")
+    health = orchestrator.mcp.health_check()
+    integrations = [
+        {"name": name, "connected": connected}
+        for name, connected in health.items()
+    ]
+    return {"integrations": integrations}
 
 
 # === WebSocket ===
