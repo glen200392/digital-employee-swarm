@@ -11,6 +11,7 @@ from agents.talent_agent import TalentAgent
 from agents.decision_agent import DecisionAgent
 from agents.base_agent import BaseAgent
 from orchestrator.intent_classifier import IntentClassifier
+from orchestrator.task_planner import TaskPlanner
 from harness.risk_assessor import RiskAssessor
 from harness.llm_provider import LLMProvider
 from harness.skill_registry import SkillRegistry
@@ -48,6 +49,10 @@ class MasterOrchestrator:
 
         self.classifier = IntentClassifier()
         self.risk_assessor = RiskAssessor()
+        self.task_planner = TaskPlanner()
+
+        # Agent executors map（供 TaskPlanner 執行子任務）
+        self.agent_executors = {name: agent.run for name, agent in self.agents.items()}
 
         # A2A 協議 — 自動註冊所有 Agent
         self.a2a = A2AProtocol()
@@ -71,6 +76,19 @@ class MasterOrchestrator:
     def dispatch(self, user_prompt: str) -> str:
         """接收使用者指令，分析意圖，派發給對應 Agent。"""
         print(f"\n[Orchestrator] 收到指令: {user_prompt}")
+
+        # 0. 複合任務檢查：有多個子任務時走 TaskPlanner 路徑
+        plan = self.task_planner.plan(user_prompt, self.llm)
+        if len(plan.sub_tasks) > 1:
+            print(f"[Orchestrator] 複合任務 → TaskPlanner ({len(plan.sub_tasks)} 個子任務)")
+            plan = self.task_planner.execute(plan, self.agent_executors)
+            return self.task_planner.aggregate(plan)
+
+        # 1. 意圖分析（簡單任務走原有單 Agent 路由）
+        return self._single_agent_route(user_prompt)
+
+    def _single_agent_route(self, user_prompt: str) -> str:
+        """原有單 Agent 路由邏輯。"""
 
         # 1. 意圖分析
         agent_name, confidence = self.classifier.classify(user_prompt)
