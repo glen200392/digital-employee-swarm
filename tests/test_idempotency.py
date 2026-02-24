@@ -64,6 +64,17 @@ class TestGitMemoryIdempotency:
         self.memory.commit_progress("KM_AGENT", "TASK-A", "記錄 A")
         assert self.memory._is_duplicate("KM_AGENT", "TASK-B") is False
 
+    def test_is_duplicate_no_false_positive_prefix_match(self):
+        """TASK-1 寫入後，TASK-10 不應被誤判為重複"""
+        self.memory.commit_progress("KM_AGENT", "TASK-1", "短 ID")
+        assert self.memory._is_duplicate("KM_AGENT", "TASK-10") is False
+        assert self.memory._is_duplicate("KM_AGENT", "TASK-11") is False
+
+    def test_is_duplicate_no_false_positive_agent_prefix(self):
+        """KM_AGENT 寫入後，KM 不應被誤判為重複"""
+        self.memory.commit_progress("KM_AGENT", "TASK-Z", "完整 Agent 名稱")
+        assert self.memory._is_duplicate("KM", "TASK-Z") is False
+
 
 class TestSessionStoreIdempotency:
     def setup_method(self):

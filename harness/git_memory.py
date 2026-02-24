@@ -64,15 +64,18 @@ class GitMemory:
     def _is_duplicate(self, agent_name: str, task_id: str) -> bool:
         """
         檢查 PROGRESS.md 最後 N 行中是否已存在相同的 (agent_name, task_id)。
-        若已存在，則視為重複，應跳過寫入。
+        使用精確的欄位比對（管道符號分隔），避免部分字串誤判。
         """
         if not os.path.exists(self.progress_md):
             return False
+        # PROGRESS.md 每行格式: | timestamp | agent_name | task_id | message |
+        agent_token = f"| {agent_name} |"
+        task_token = f"| {task_id} |"
         try:
             with open(self.progress_md, "r", encoding="utf-8") as f:
                 lines = f.readlines()
             for line in reversed(lines[-50:]):
-                if agent_name in line and task_id in line:
+                if agent_token in line and task_token in line:
                     return True
         except Exception:
             pass

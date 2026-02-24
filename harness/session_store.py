@@ -48,12 +48,14 @@ class SessionStore:
 
     def save_session(self, agent_name: str, task_id: str, status: str,
                      eval_score: float = 0.0, risk_level: str = "LOW",
-                     output: str = "") -> None:
+                     output: str = "",
+                     _now: Optional[str] = None) -> None:
         """
         儲存或更新一筆 Session 記錄。
         若相同 (agent_name, task_id) 已存在，則執行 UPDATE（冪等性保護）。
+        _now 參數供測試使用，預設為目前時間。
         """
-        now = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+        now = _now or datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
         with self._connect() as conn:
             conn.execute(
                 """
