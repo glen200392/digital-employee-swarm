@@ -1,0 +1,41 @@
+{
+  "workflow_id": "knowledge_immortalization",
+  "name": "知識永生化完整流程",
+  "description": "萃取知識卡片 → 流程優化 → 培訓規劃",
+  "created_at": "2024-01-01",
+  "steps": [
+    {
+      "step_id": "step1_km",
+      "step_type": "agent",
+      "agent_name": "KM_AGENT",
+      "task_template": "請萃取並整理以下內容的知識卡片：{topic}",
+      "condition": null,
+      "max_iterations": 3,
+      "parallel_steps": [],
+      "on_success": null,
+      "on_failure": null
+    },
+    {
+      "step_id": "step2_process",
+      "step_type": "agent",
+      "agent_name": "PROCESS_AGENT",
+      "task_template": "基於以下知識卡片，優化相關業務流程：\n{step1_km}",
+      "condition": null,
+      "max_iterations": 3,
+      "parallel_steps": [],
+      "on_success": null,
+      "on_failure": null
+    },
+    {
+      "step_id": "step3_talent",
+      "step_type": "agent",
+      "agent_name": "TALENT_AGENT",
+      "task_template": "基於以下知識與優化流程，規劃培訓計畫：\n知識卡片：{step1_km}\n優化流程：{step2_process}",
+      "condition": null,
+      "max_iterations": 3,
+      "parallel_steps": [],
+      "on_success": null,
+      "on_failure": null
+    }
+  ]
+}
