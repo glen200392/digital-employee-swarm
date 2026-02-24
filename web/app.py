@@ -18,6 +18,7 @@ import json
 from orchestrator.router import MasterOrchestrator
 from harness.vector_store import VectorStore
 from harness.hitl_manager import HITLManager, ApprovalAction
+from harness.agent_profile import AgentProfileStore
 from web.auth import AuthManager, Role
 
 # === 全域初始化 ===
@@ -26,6 +27,7 @@ orchestrator = MasterOrchestrator()
 vector_store = VectorStore()
 auth = AuthManager()
 hitl = HITLManager()
+profile_store = AgentProfileStore()
 
 # 索引知識庫
 project_root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
@@ -224,6 +226,21 @@ async def get_skills(token: str):
             "tags": s.tags,
         })
     return {"skills": skills}
+
+
+@app.get("/api/agents/{agent_name}/profile")
+async def get_agent_profile(agent_name: str, token: str):
+    verify_auth(token, "agents")
+    profile = profile_store.load_profile(agent_name)
+    if not profile:
+        raise HTTPException(status_code=404, detail=f"Agent '{agent_name}' 的檔案不存在")
+    return profile.to_dict()
+
+
+@app.get("/api/fleet/summary")
+async def get_fleet_summary(token: str):
+    verify_auth(token, "agents")
+    return profile_store.get_fleet_summary()
 
 
 # === WebSocket ===

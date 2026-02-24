@@ -11,6 +11,7 @@ from harness.git_memory import GitMemory
 from harness.core import EnterpriseHarness, SessionResult
 from harness.llm_provider import LLMProvider
 from harness.skill_registry import SkillRegistry
+from harness.agent_profile import AgentProfileStore
 
 
 class BaseAgent(ABC):
@@ -22,6 +23,7 @@ class BaseAgent(ABC):
     # 共享的 LLM Provider 和 Skill Registry（全系統單例）
     _shared_llm: Optional[LLMProvider] = None
     _shared_skills: Optional[SkillRegistry] = None
+    _shared_profile_store: Optional[AgentProfileStore] = None
 
     def __init__(self, name: str, role: str, description: str,
                  system_prompt: str = "",
@@ -38,10 +40,12 @@ class BaseAgent(ABC):
 
     @classmethod
     def init_shared_resources(cls, llm: Optional[LLMProvider] = None,
-                              skills: Optional[SkillRegistry] = None):
+                              skills: Optional[SkillRegistry] = None,
+                              profile_store: Optional[AgentProfileStore] = None):
         """初始化共享資源（由 Orchestrator 在啟動時呼叫一次）"""
         cls._shared_llm = llm or LLMProvider()
         cls._shared_skills = skills or SkillRegistry()
+        cls._shared_profile_store = profile_store
 
     @property
     def llm(self) -> LLMProvider:
@@ -68,11 +72,28 @@ class BaseAgent(ABC):
         print(f"  [{self.name}] {llm_mode}")
         print(f"{'='*50}")
 
+        start_time = time.time()
         result = self.harness.run_epcc_cycle(
             agent_name=self.name,
             task=user_instruction,
             executor_fn=self._execute,
         )
+        duration = time.time() - start_time
+
+        # 更新 Agent 員工檔案
+        if self._shared_profile_store:
+            profile = self._shared_profile_store.load_profile(self.name)
+            if profile:
+                tokens = getattr(result, "tokens_used", 0)
+                profile.record_task(
+                    score=result.eval_score,
+                    duration_sec=duration,
+                    tokens=tokens,
+                )
+                self._shared_profile_store.save_profile(profile)
+                self._shared_profile_store.record_performance(
+                    self.name, profile.get_today_snapshot()
+                )
 
         self.status = "IDLE"
         print(f"  [{self.name}] 執行結果: {result}")
