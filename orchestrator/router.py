@@ -11,7 +11,7 @@ from agents.talent_agent import TalentAgent
 from agents.decision_agent import DecisionAgent
 from agents.base_agent import BaseAgent
 from orchestrator.intent_classifier import IntentClassifier
-from harness.risk_assessor import RiskAssessor
+from harness.risk_assessor import SemanticRiskAssessor
 from harness.llm_provider import LLMProvider
 from harness.skill_registry import SkillRegistry
 from protocols.a2a import A2AProtocol, AgentCard
@@ -47,7 +47,7 @@ class MasterOrchestrator:
         }
 
         self.classifier = IntentClassifier()
-        self.risk_assessor = RiskAssessor()
+        self.risk_assessor = SemanticRiskAssessor(llm_provider=self.llm)
 
         # A2A 協議 — 自動註冊所有 Agent
         self.a2a = A2AProtocol()
