@@ -1,14 +1,14 @@
-# 知識卡片: 採購SOP
+# 知識卡片: 測試文件
 
 ## 基本資訊
 - **建立時間**: 2026-02-24 00:40:58
-- **來源指令**: 萃取採購SOP
+- **來源指令**: 萃取測試文件
 - **狀態**: 初稿（待知識大使驗證）
 - **Agent**: KM_AGENT
 - **模式**: 離線模板（建議設定 LLM API Key 以取得 AI 深度解析）
 
 ## 延續上次進度
-- [2026-02-24 00:36:16] [KM_AGENT] Task-TASK-1771893376: COMPLETED | Score: 0.3 | Risk: LOW | 知識卡片已建立: docs/sops/knowledge_KM-1771893376.md
+- [2026-02-24 00:40:58] [KM_AGENT] Task-TASK-1771893658: COMPLETED | Score: 0.3 | Risk: LOW | 知識卡片已建立: docs/sops/knowledge_KM-1771893658.md
 - [2026-02-24 00:36:16] [KM_AGENT] Task-TASK-1771893376: COMPLETED | Score: 0.3 | Risk: LOW | 知識卡片已建立: docs/sops/knowledge_KM-1771893376.md
 - [2026-02-24 00:36:16] [KM_AGENT] Task-TASK-1771893376: COMPLETED | Score: 0.3 | Risk: LOW | 知識卡片已建立: docs/sops/knowledge_KM-1771893376.md
 
