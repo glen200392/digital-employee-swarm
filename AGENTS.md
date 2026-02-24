@@ -6,6 +6,9 @@
 - **Responsibility**: 接收使用者自然語言指令，解析意圖，派發給對應 Domain Agent
 - **Risk Engine**: 自動風險評估（LOW / MEDIUM / HIGH）
 - **Tech Stack**: Python, IntentClassifier
+- **HITL Gate**: HIGH risk 任務強制暫停等待人工審批
+- **Approval API**: POST /api/approvals/{id}/approve|reject
+- **Webhook**: Slack / 通用 HTTP POST 通知審批人
 
 ---
 

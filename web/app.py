@@ -17,6 +17,7 @@ import json
 
 from orchestrator.router import MasterOrchestrator
 from harness.vector_store import VectorStore
+from harness.hitl_manager import HITLManager, ApprovalAction
 from web.auth import AuthManager, Role
 
 # === 全域初始化 ===
@@ -24,6 +25,7 @@ app = FastAPI(title="Digital Employee Swarm", version="2.0")
 orchestrator = MasterOrchestrator()
 vector_store = VectorStore()
 auth = AuthManager()
+hitl = HITLManager()
 
 # 索引知識庫
 project_root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
@@ -51,6 +53,12 @@ class DispatchRequest(BaseModel):
 class SearchRequest(BaseModel):
     query: str
     top_k: int = 5
+
+
+class ResolveRequest(BaseModel):
+    token: str
+    resolved_by: str = "admin"
+    note: str = ""
 
 
 # === Helper: 驗證 Token ===
@@ -125,6 +133,74 @@ async def get_agents(token: str):
 async def search_knowledge(req: SearchRequest):
     results = vector_store.search(req.query, top_k=req.top_k)
     return {"results": results, "query": req.query}
+
+
+# === Approval API ===
+
+def _approval_to_dict(req):
+    return {
+        "request_id": req.request_id,
+        "agent": req.agent_name,
+        "task": req.task,
+        "risk_level": req.risk_level,
+        "risk_reason": req.risk_reason,
+        "status": req.status.value,
+        "created_at": req.created_at,
+        "resolved_at": req.resolved_at,
+        "resolved_by": req.resolved_by,
+        "resolution_note": req.resolution_note,
+        "webhook_sent": req.webhook_sent,
+        "timeout_hours": req.timeout_hours,
+    }
+
+
+@app.get("/api/approvals/pending")
+async def get_pending_approvals(token: str):
+    verify_auth(token, "approvals")
+    requests = hitl.get_pending_requests()
+    return {"requests": [_approval_to_dict(r) for r in requests]}
+
+
+@app.get("/api/approvals/{request_id}")
+async def get_approval(request_id: str, token: str):
+    verify_auth(token, "approvals")
+    req = hitl.get_request(request_id)
+    if not req:
+        raise HTTPException(status_code=404, detail="審批請求不存在")
+    return _approval_to_dict(req)
+
+
+@app.post("/api/approvals/{request_id}/approve")
+async def approve_request(request_id: str, body: ResolveRequest):
+    verify_auth(body.token, "approvals")
+    req = hitl.get_request(request_id)
+    if not req:
+        raise HTTPException(status_code=404, detail="審批請求不存在")
+    updated = hitl.resolve(
+        request_id, ApprovalAction.APPROVE,
+        resolved_by=body.resolved_by, note=body.note,
+    )
+    return _approval_to_dict(updated)
+
+
+@app.post("/api/approvals/{request_id}/reject")
+async def reject_request(request_id: str, body: ResolveRequest):
+    verify_auth(body.token, "approvals")
+    req = hitl.get_request(request_id)
+    if not req:
+        raise HTTPException(status_code=404, detail="審批請求不存在")
+    updated = hitl.resolve(
+        request_id, ApprovalAction.REJECT,
+        resolved_by=body.resolved_by, note=body.note,
+    )
+    return _approval_to_dict(updated)
+
+
+@app.post("/api/approvals/expire")
+async def expire_approvals(token: str):
+    verify_auth(token, "approvals")
+    expired = hitl.expire_timeouts()
+    return {"expired_count": len(expired), "expired_ids": expired}
 
 
 @app.get("/api/mcp")
