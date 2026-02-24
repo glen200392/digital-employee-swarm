@@ -1,14 +1,14 @@
-# 知識卡片: test instruction
+# 知識卡片: status test
 
 ## 基本資訊
 - **建立時間**: 2026-02-24 02:32:27
-- **來源指令**: test instruction
+- **來源指令**: status test
 - **狀態**: 初稿（待知識大使驗證）
 - **Agent**: KM_AGENT
 - **模式**: 離線模板（建議設定 LLM API Key 以取得 AI 深度解析）
 
 ## 延續上次進度
-- [2026-02-24 02:29:30] [KM_AGENT] Task-TASK-1771900170: COMPLETED | Score: 0.3 | Risk: LOW | 知識卡片已建立: docs/sops/knowledge_KM-1771900170.md
+- [2026-02-24 02:32:27] [KM_AGENT] Task-TASK-1771900347: COMPLETED | Score: 0.3 | Risk: LOW | 知識卡片已建立: docs/sops/knowledge_KM-1771900347.md
 - [2026-02-24 02:29:30] [KM_AGENT] Task-TASK-1771900170: COMPLETED | Score: 0.3 | Risk: LOW | 知識卡片已建立: docs/sops/knowledge_KM-1771900170.md
 - [2026-02-24 02:29:30] [KM_AGENT] Task-TASK-1771900170: COMPLETED | Score: 0.3 | Risk: LOW | 知識卡片已建立: docs/sops/knowledge_KM-1771900170.md
 
